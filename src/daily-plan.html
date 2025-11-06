@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Trading Plan</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'navy-dark': '#1e3a5f',
+                        'navy-medium': '#2c5282',
+                        'blue-primary': '#3b82f6',
+                        'blue-secondary': '#60a5fa',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom styles for print */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                padding: 0;
+                margin: 0;
+            }
+
+            .container {
+                max-width: 100%;
+                box-shadow: none;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Animation for status message */
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .status-message {
+            animation: slideDown 0.3s ease-out;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 min-h-screen py-8 px-4">
+
+    <!-- Main Container -->
+    <div class="max-w-6xl mx-auto">
+
+        <!-- Header -->
+        <div class="bg-navy-dark rounded-t-lg shadow-lg px-8 py-6 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-white tracking-wide">DAILY TRADING PLAN</h1>
+            <div class="bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
+                <span class="text-white/90 text-sm font-medium" id="current-date"></span>
+            </div>
+        </div>
+
+        <!-- Status Message (hidden by default) -->
+        <div id="status-message" class="hidden status-message mx-8 mt-4 px-4 py-3 rounded-lg text-sm font-medium">
+            <!-- Content injected via JS -->
+        </div>
+
+        <!-- Form Container -->
+        <div class="bg-white rounded-b-lg shadow-lg">
+
+            <form id="daily-plan-form" class="divide-y divide-slate-200">
+
+                <!-- ============================================ -->
+                <!-- SECTION 1: PRE-MARKET ANALYSIS -->
+                <!-- ============================================ -->
+                <section class="p-8">
+                    <div
+                        class="bg-blue-primary text-white px-6 py-3 -mx-8 -mt-8 mb-6 font-semibold text-sm uppercase tracking-wider">
+                        Pre-Market Analysis
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                        <!-- Market Regime -->
+                        <div>
+                            <label for="market-regime"
+                                class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                                Market Regime
+                            </label>
+                            <select id="market-regime" name="marketRegime" required
+                                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                                <option value="">Select...</option>
+                                <option value="Trend Up">Trend Up</option>
+                                <option value="Trend Down">Trend Down</option>
+                                <option value="Range">Range</option>
+                                <option value="Consolidation">Consolidation</option>
+                                <option value="High Volatility">High Volatility</option>
+                            </select>
+                        </div>
+
+                        <!-- Key Economic Events -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                                Key Economic Events Today
+                            </label>
+                            <div class="grid grid-cols-2 gap-3 pt-1">
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" name="events" value="CPI/PPI"
+                                        class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
+                                    <span class="text-sm text-slate-700">CPI/PPI</span>
+                                </label>
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" name="events" value="FOMC"
+                                        class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
+                                    <span class="text-sm text-slate-700">FOMC</span>
+                                </label>
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" name="events" value="Major Earnings"
+                                        class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
+                                    <span class="text-sm text-slate-700">Major Earnings</span>
+                                </label>
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" name="events" value="OpEx"
+                                        class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
+                                    <span class="text-sm text-slate-700">OpEx</span>
+                                </label>
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" name="events" value="Bond Auction"
+                                        class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
+                                    <span class="text-sm text-slate-700">Bond Auction</span>
+                                </label>
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" name="events" value="Other"
+                                        class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
+                                    <span class="text-sm text-slate-700">Other</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Primary Context -->
+                    <div class="mt-6">
+                        <label for="primary-context"
+                            class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                            Primary Context
+                        </label>
+                        <textarea id="primary-context" name="primaryContext" rows="2"
+                            placeholder="e.g. Above weekly pivot, testing monthly R1"
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none"></textarea>
+                    </div>
+
+                    <!-- Secondary Context -->
+                    <div class="mt-6">
+                        <label for="secondary-context"
+                            class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                            Secondary Context
+                        </label>
+                        <textarea id="secondary-context" name="secondaryContext" rows="2"
+                            placeholder="e.g. End of month rebalancing, FOMC week"
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none"></textarea>
+                    </div>
+
+                    <!-- Expected Volatility -->
+                    <div class="mt-6">
+                        <label for="expected-volatility"
+                            class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                            Expected Volatility/ATR
+                        </label>
+                        <input type="text" id="expected-volatility" name="expectedVolatility"
+                            placeholder="e.g. VIX: 18.5, SPY ATR: 5.2"
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                    </div>
+                </section>
+
+                <!-- ============================================ -->
+                <!-- SECTION 2: TRADING PLAN -->
+                <!-- ============================================ -->
+                <section class="p-8">
+                    <div
+                        class="bg-blue-primary text-white px-6 py-3 -mx-8 -mt-8 mb-6 font-semibold text-sm uppercase tracking-wider">
+                        Trading Plan
+                    </div>
+
+                    <!-- A-Setup for Today -->
+                    <div>
+                        <label for="a-setup"
+                            class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                            A-Setup for Today
+                        </label>
+                        <textarea id="a-setup" name="aSetup" rows="3" placeholder="Context + Trigger + Invalidation"
+                            required
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none"></textarea>
+                    </div>
+
+                    <!-- Key Levels & Alerts -->
+                    <div class="mt-6">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
+                            Key Levels & Alerts
+                        </label>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+
+                            <!-- Resistance 2 -->
+                            <div>
+                                <label for="resistance-2"
+                                    class="block text-xs font-semibold text-red-600 mb-1.5 uppercase tracking-wide">
+                                    Resistance 2
+                                </label>
+                                <input type="number" step="0.01" id="resistance-2" name="resistance2" placeholder="0.00"
+                                    class="w-full px-3 py-2 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all text-sm">
+                            </div>
+
+                            <!-- Resistance 1 -->
+                            <div>
+                                <label for="resistance-1"
+                                    class="block text-xs font-semibold text-red-600 mb-1.5 uppercase tracking-wide">
+                                    Resistance 1
+                                </label>
+                                <input type="number" step="0.01" id="resistance-1" name="resistance1" placeholder="0.00"
+                                    class="w-full px-3 py-2 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all text-sm">
+                            </div>
+
+                            <!-- Pivot -->
+                            <div>
+                                <label for="pivot"
+                                    class="block text-xs font-semibold text-indigo-600 mb-1.5 uppercase tracking-wide">
+                                    Pivot
+                                </label>
+                                <input type="number" step="0.01" id="pivot" name="pivot" placeholder="0.00"
+                                    class="w-full px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all text-sm">
+                            </div>
+
+                            <!-- Support 1 -->
+                            <div>
+                                <label for="support-1"
+                                    class="block text-xs font-semibold text-green-600 mb-1.5 uppercase tracking-wide">
+                                    Support 1
+                                </label>
+                                <input type="number" step="0.01" id="support-1" name="support1" placeholder="0.00"
+                                    class="w-full px-3 py-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all text-sm">
+                            </div>
+
+                            <!-- Support 2 -->
+                            <div>
+                                <label for="support-2"
+                                    class="block text-xs font-semibold text-green-600 mb-1.5 uppercase tracking-wide">
+                                    Support 2
+                                </label>
+                                <input type="number" step="0.01" id="support-2" name="support2" placeholder="0.00"
+                                    class="w-full px-3 py-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all text-sm">
+                            </div>
+
+                            <!-- VWAP/POC -->
+                            <div>
+                                <label for="vwap-poc"
+                                    class="block text-xs font-semibold text-indigo-600 mb-1.5 uppercase tracking-wide">
+                                    VWAP/POC
+                                </label>
+                                <input type="number" step="0.01" id="vwap-poc" name="vwapPoc" placeholder="0.00"
+                                    class="w-full px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- What I Will NOT Do Today -->
+                    <div class="mt-6">
+                        <label for="what-not-do"
+                            class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                            What I Will NOT Do Today
+                        </label>
+                        <textarea id="what-not-do" name="whatNotDo" rows="3"
+                            placeholder="e.g. No revenge trades, no trading during lunch chop, no adding to losers"
+                            required
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none"></textarea>
+                    </div>
+
+                    <!-- Mental State Check -->
+                    <div class="mt-6">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
+                            Mental State Check
+                        </label>
+                        <div class="flex flex-wrap gap-4">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="radio" name="mentalState" value="Focused" required
+                                    class="w-4 h-4 text-blue-primary focus:ring-2 focus:ring-blue-primary">
+                                <span class="text-sm text-slate-700 font-medium">Focused</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="radio" name="mentalState" value="Neutral"
+                                    class="w-4 h-4 text-blue-primary focus:ring-2 focus:ring-blue-primary">
+                                <span class="text-sm text-slate-700 font-medium">Neutral</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="radio" name="mentalState" value="Anxious"
+                                    class="w-4 h-4 text-blue-primary focus:ring-2 focus:ring-blue-primary">
+                                <span class="text-sm text-slate-700 font-medium">Anxious</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="radio" name="mentalState" value="Tired"
+                                    class="w-4 h-4 text-blue-primary focus:ring-2 focus:ring-blue-primary">
+                                <span class="text-sm text-slate-700 font-medium">Tired</span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================ -->
+                <!-- SECTION 3: RISK MANAGEMENT -->
+                <!-- ============================================ -->
+                <section class="p-8">
+                    <div
+                        class="bg-blue-primary text-white px-6 py-3 -mx-8 -mt-8 mb-6 font-semibold text-sm uppercase tracking-wider">
+                        Risk Management
+                    </div>
+
+                    <!-- Daily Risk Parameters -->
+                    <div class="mb-6">
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wide mb-4">Daily Risk Parameters
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                            <!-- Max Daily Loss -->
+                            <div>
+                                <label for="max-daily-loss" class="block text-sm font-medium text-slate-600 mb-1.5">
+                                    Max Daily Loss
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-slate-400">$</span>
+                                    <input type="number" id="max-daily-loss" name="maxDailyLoss" placeholder="500"
+                                        required
+                                        class="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                                </div>
+                            </div>
+
+                            <!-- Max Position Size -->
+                            <div>
+                                <label for="max-position-size" class="block text-sm font-medium text-slate-600 mb-1.5">
+                                    Max Position Size
+                                </label>
+                                <input type="text" id="max-position-size" name="maxPositionSize"
+                                    placeholder="shares/contracts"
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                            </div>
+
+                            <!-- Max # of Trades -->
+                            <div>
+                                <label for="max-trades" class="block text-sm font-medium text-slate-600 mb-1.5">
+                                    Max # of Trades
+                                </label>
+                                <input type="number" id="max-trades" name="maxTrades" value="5" required
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                            </div>
+
+                            <!-- Profit Target -->
+                            <div>
+                                <label for="profit-target" class="block text-sm font-medium text-slate-600 mb-1.5">
+                                    Profit Target
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-slate-400">$</span>
+                                    <input type="number" id="profit-target" name="profitTarget" placeholder="200"
+                                        class="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                                </div>
+                            </div>
+
+                            <!-- R per Trade -->
+                            <div>
+                                <label for="r-per-trade" class="block text-sm font-medium text-slate-600 mb-1.5">
+                                    R per Trade
+                                </label>
+                                <input type="text" id="r-per-trade" name="rPerTrade" value="1%"
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Circuit Breakers -->
+                    <div class="bg-amber-50 border-2 border-amber-400 rounded-lg p-5 mb-6">
+                        <h4 class="text-sm font-bold text-amber-900 uppercase tracking-wide mb-4">Circuit Breakers</h4>
+                        <div class="space-y-3">
+                            <label class="flex items-start space-x-3 cursor-pointer">
+                                <input type="checkbox" name="circuitBreaker1" value="2losses"
+                                    class="mt-1 w-5 h-5 text-amber-600 rounded focus:ring-2 focus:ring-amber-500">
+                                <span class="text-sm text-amber-900">
+                                    <strong>2 losses</strong> = 30min break
+                                </span>
+                            </label>
+                            <label class="flex items-start space-x-3 cursor-pointer">
+                                <input type="checkbox" name="circuitBreaker2" value="3losses" checked
+                                    class="mt-1 w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500">
+                                <span class="text-sm text-red-900 font-semibold">
+                                    <strong>3 losses</strong> = done for day
+                                </span>
+                            </label>
+                            <label class="flex items-start space-x-3 cursor-pointer">
+                                <input type="checkbox" name="circuitBreaker3" value="maxhit" checked
+                                    class="mt-1 w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500">
+                                <span class="text-sm text-red-900 font-semibold">
+                                    <strong>Daily max hit</strong> = close all
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Time Restrictions -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
+                            Time Restrictions
+                        </label>
+                        <div class="flex flex-wrap gap-4">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" name="timeRestriction" value="first15min"
+                                    class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
+                                <span class="text-sm text-slate-700">No trades first 15min</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" name="timeRestriction" value="lunch"
+                                    class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
+                                <span class="text-sm text-slate-700">No trades 12-1pm</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" name="timeRestriction" value="flatBy"
+                                    class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
+                                <span class="text-sm text-slate-700">Flat by 3:30pm</span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================ -->
+                <!-- SECTION 4: SETUP EXECUTION TEMPLATE -->
+                <!-- ============================================ -->
+                <section class="p-8">
+                    <div
+                        class="bg-blue-primary text-white px-6 py-3 -mx-8 -mt-8 mb-6 font-semibold text-sm uppercase tracking-wider">
+                        Setup Execution Template
+                    </div>
+
+                    <!-- Template Information -->
+                    <div class="bg-slate-50 border-l-4 border-blue-primary rounded-r-lg p-5 space-y-4 mb-6">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Context
+                                Requirements:</h4>
+                            <p class="text-sm text-slate-700 leading-relaxed">
+                                HTF level present (weekly/daily/monthly pivot, TPO VAH/VAL/POC), liquidity identified
+                                above/below, regime appropriate (not "trend only" for mean reversion)
+                            </p>
+                        </div>
+
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Entry Triggers:
+                            </h4>
+                            <p class="text-sm text-slate-700 leading-relaxed">
+                                Price sweep + close back inside range | Footprint shows absorption at level | Delta
+                                divergence (fails to confirm new high/low) | Volume climax at extremes
+                            </p>
+                        </div>
+
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Invalidation
+                                Rules:</h4>
+                            <p class="text-sm text-slate-700 leading-relaxed">
+                                Break beyond wick extreme by X ticks | Time stop: no movement in 15min | Context change
+                                (news, regime shift)
+                            </p>
+                        </div>
+
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Position
+                                Management:</h4>
+                            <p class="text-sm text-slate-700 leading-relaxed">
+                                Entry: Market order on reclaim / Limit at retest | Scaling: Add only on first pullback
+                                if risk unchanged | Exits: Fixed target (VWAP/POC) or trailing stop on structure break
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Today's Specific Setup Notes -->
+                    <div>
+                        <label for="setup-notes"
+                            class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                            Today's Specific Setup Notes
+                        </label>
+                        <textarea id="setup-notes" name="setupNotes" rows="3"
+                            placeholder="Customizations to template for today's market conditions"
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none"></textarea>
+                    </div>
+                </section>
+
+            </form>
+
+            <!-- ============================================ -->
+            <!-- ACTIONS BAR -->
+            <!-- ============================================ -->
+            <div class="bg-slate-50 px-8 py-6 flex flex-wrap justify-between items-center gap-4 no-print rounded-b-lg">
+                <div class="flex flex-wrap gap-3">
+                    <button type="button" onclick="loadYesterdayPlan()"
+                        class="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 hover:border-slate-400 transition-all focus:ring-2 focus:ring-blue-primary focus:ring-offset-2">
+                        📋 Load Yesterday
+                    </button>
+                    <button type="button" onclick="clearForm()"
+                        class="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 hover:border-slate-400 transition-all focus:ring-2 focus:ring-blue-primary focus:ring-offset-2">
+                        🔄 Reset
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap gap-3">
+                    <button type="button" onclick="window.print()"
+                        class="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 hover:border-slate-400 transition-all focus:ring-2 focus:ring-blue-primary focus:ring-offset-2">
+                        🖨️ Print
+                    </button>
+                    <button type="button" onclick="savePlan()"
+                        class="px-6 py-2.5 bg-blue-primary text-white rounded-lg font-semibold text-sm hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30 focus:ring-2 focus:ring-blue-primary focus:ring-offset-2">
+                        💾 Save Plan
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT -->
+    <!-- ============================================ -->
+    <script>
+        // ==========================================
+        // CONFIGURATION
+        // ==========================================
+        const CONFIG = {
+            storageKey: 'daily-plan-today',
+            timezone: 'America/Sao_Paulo' // BRT
+        };
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', async function () {
+            // Set current date
+            setCurrentDate();
+
+            // Load today's plan if exists
+            await loadTodayPlan();
+
+            // Setup form validation
+            setupFormValidation();
+
+            console.log('✅ Daily Plan initialized');
+        });
+
+        // ==========================================
+        // DATE MANAGEMENT
+        // ==========================================
+        function setCurrentDate() {
+            const today = new Date();
+            const options = {
+                month: '2-digit',
+                day: '2-digit',
+                year: 'numeric',
+                timeZone: CONFIG.timezone
+            };
+            const dateStr = today.toLocaleDateString('en-US', options);
+            document.getElementById('current-date').textContent = dateStr;
+        }
+
+        function getTodayDateKey() {
+            const today = new Date();
+            return today.toISOString().split('T')[0]; // YYYY-MM-DD
+        }
+
+        function getYesterdayDateKey() {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            return yesterday.toISOString().split('T')[0];
+        }
+
+        // ==========================================
+        // SAVE PLAN
+        // ==========================================
+        async function savePlan() {
+            const form = document.getElementById('daily-plan-form');
+
+            // Validate required fields
+            if (!form.checkValidity()) {
+                showMessage('Please fill all required fields', 'warning');
+                form.reportValidity();
+                return;
+            }
+
+            try {
+                const plan = buildPlanObject();
+
+                // Save to window.storage (today)
+                await window.storage.set(CONFIG.storageKey, JSON.stringify(plan));
+
+                // Save to history (with date)
+                const historyKey = `daily-plan-${plan.date}`;
+                await window.storage.set(historyKey, JSON.stringify(plan));
+
+                showMessage('✅ Plan saved successfully!', 'success');
+
+                console.log('✅ Plan saved:', plan);
+
+            } catch (error) {
+                console.error('Error saving plan:', error);
+                showMessage('❌ Error saving plan: ' + error.message, 'error');
+            }
+        }
+
+        function buildPlanObject() {
+            const form = document.getElementById('daily-plan-form');
+            const formData = new FormData(form);
+
+            return {
+                version: '1.0',
+                date: getTodayDateKey(),
+                timestamp: new Date().toISOString(),
+
+                // Pre-Market Analysis
+                marketRegime: formData.get('marketRegime'),
+                events: formData.getAll('events'),
+                primaryContext: formData.get('primaryContext'),
+                secondaryContext: formData.get('secondaryContext'),
+                expectedVolatility: formData.get('expectedVolatility'),
+
+                // Trading Plan
+                aSetup: formData.get('aSetup'),
+                levels: {
+                    resistance2: formData.get('resistance2') || null,
+                    resistance1: formData.get('resistance1') || null,
+                    pivot: formData.get('pivot') || null,
+                    support1: formData.get('support1') || null,
+                    support2: formData.get('support2') || null,
+                    vwapPoc: formData.get('vwapPoc') || null
+                },
+                whatNotDo: formData.get('whatNotDo'),
+                mentalState: formData.get('mentalState'),
+
+                // Risk Management
+                maxDailyLoss: formData.get('maxDailyLoss'),
+                maxPositionSize: formData.get('maxPositionSize'),
+                maxTrades: formData.get('maxTrades'),
+                profitTarget: formData.get('profitTarget'),
+                rPerTrade: formData.get('rPerTrade'),
+                circuitBreakers: {
+                    twoLosses: formData.get('circuitBreaker1') === 'on',
+                    threeLosses: formData.get('circuitBreaker2') === 'on',
+                    maxHit: formData.get('circuitBreaker3') === 'on'
+                },
+                timeRestrictions: formData.getAll('timeRestriction'),
+
+                // Setup Notes
+                setupNotes: formData.get('setupNotes')
+            };
+        }
+
+        // ==========================================
+        // LOAD PLAN
+        // ==========================================
+        async function loadTodayPlan() {
+            try {
+                const result = await window.storage.get(CONFIG.storageKey);
+
+                if (result && result.value) {
+                    const plan = JSON.parse(result.value);
+
+                    // Verify it's from today
+                    if (plan.date === getTodayDateKey()) {
+                        fillFormWithPlan(plan);
+                        showMessage('📋 Loaded today\'s plan', 'info');
+                        console.log('✅ Loaded plan:', plan);
+                    }
+                }
+            } catch (error) {
+                console.log('No plan for today');
+            }
+        }
+
+        async function loadYesterdayPlan() {
+            try {
+                const yesterdayKey = `daily-plan-${getYesterdayDateKey()}`;
+                const result = await window.storage.get(yesterdayKey);
+
+                if (result && result.value) {
+                    const plan = JSON.parse(result.value);
+
+                    if (confirm('Load yesterday\'s plan as template?')) {
+                        fillFormWithPlan(plan);
+                        showMessage('📋 Loaded yesterday\'s plan', 'info');
+                    }
+                } else {
+                    showMessage('No plan found for yesterday', 'warning');
+                }
+            } catch (error) {
+                showMessage('Error loading yesterday\'s plan', 'error');
+                console.error(error);
+            }
+        }
+
+        function fillFormWithPlan(plan) {
+            const form = document.getElementById('daily-plan-form');
+
+            // Pre-Market Analysis
+            if (plan.marketRegime) form.marketRegime.value = plan.marketRegime;
+            if (plan.events) {
+                plan.events.forEach(event => {
+                    const checkbox = form.querySelector(`input[name="events"][value="${event}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+            if (plan.primaryContext) form.primaryContext.value = plan.primaryContext;
+            if (plan.secondaryContext) form.secondaryContext.value = plan.secondaryContext;
+            if (plan.expectedVolatility) form.expectedVolatility.value = plan.expectedVolatility;
+
+            // Trading Plan
+            if (plan.aSetup) form.aSetup.value = plan.aSetup;
+            if (plan.levels) {
+                if (plan.levels.resistance2) form.resistance2.value = plan.levels.resistance2;
+                if (plan.levels.resistance1) form.resistance1.value = plan.levels.resistance1;
+                if (plan.levels.pivot) form.pivot.value = plan.levels.pivot;
+                if (plan.levels.support1) form.support1.value = plan.levels.support1;
+                if (plan.levels.support2) form.support2.value = plan.levels.support2;
+                if (plan.levels.vwapPoc) form.vwapPoc.value = plan.levels.vwapPoc;
+            }
+            if (plan.whatNotDo) form.whatNotDo.value = plan.whatNotDo;
+            if (plan.mentalState) {
+                const radio = form.querySelector(`input[name="mentalState"][value="${plan.mentalState}"]`);
+                if (radio) radio.checked = true;
+            }
+
+            // Risk Management
+            if (plan.maxDailyLoss) form.maxDailyLoss.value = plan.maxDailyLoss;
+            if (plan.maxPositionSize) form.maxPositionSize.value = plan.maxPositionSize;
+            if (plan.maxTrades) form.maxTrades.value = plan.maxTrades;
+            if (plan.profitTarget) form.profitTarget.value = plan.profitTarget;
+            if (plan.rPerTrade) form.rPerTrade.value = plan.rPerTrade;
+
+            if (plan.circuitBreakers) {
+                form.circuitBreaker1.checked = plan.circuitBreakers.twoLosses || false;
+                form.circuitBreaker2.checked = plan.circuitBreakers.threeLosses || false;
+                form.circuitBreaker3.checked = plan.circuitBreakers.maxHit || false;
+            }
+
+            if (plan.timeRestrictions) {
+                plan.timeRestrictions.forEach(restriction => {
+                    const checkbox = form.querySelector(`input[name="timeRestriction"][value="${restriction}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+
+            // Setup Notes
+            if (plan.setupNotes) form.setupNotes.value = plan.setupNotes;
+        }
+
+        // ==========================================
+        // CLEAR FORM
+        // ==========================================
+        function clearForm() {
+            if (confirm('Clear all fields? This will not delete saved plans.')) {
+                document.getElementById('daily-plan-form').reset();
+                showMessage('Form cleared', 'info');
+            }
+        }
+
+        // ==========================================
+        // FORM VALIDATION
+        // ==========================================
+        function setupFormValidation() {
+            const form = document.getElementById('daily-plan-form');
+
+            // Real-time validation feedback
+            const requiredFields = form.querySelectorAll('[required]');
+            requiredFields.forEach(field => {
+                field.addEventListener('blur', function () {
+                    if (!this.value) {
+                        this.classList.add('border-red-400');
+                    } else {
+                        this.classList.remove('border-red-400');
+                    }
+                });
+            });
+        }
+
+        // ==========================================
+        // STATUS MESSAGE
+        // ==========================================
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('status-message');
+
+            // Remove existing classes
+            messageEl.className = 'status-message px-4 py-3 rounded-lg text-sm font-medium';
+
+            // Add type-specific classes
+            if (type === 'success') {
+                messageEl.classList.add('bg-green-50', 'text-green-800', 'border', 'border-green-200');
+            } else if (type === 'error') {
+                messageEl.classList.add('bg-red-50', 'text-red-800', 'border', 'border-red-200');
+            } else if (type === 'warning') {
+                messageEl.classList.add('bg-amber-50', 'text-amber-800', 'border', 'border-amber-200');
+            } else {
+                messageEl.classList.add('bg-blue-50', 'text-blue-800', 'border', 'border-blue-200');
+            }
+
+            messageEl.textContent = text;
+            messageEl.classList.remove('hidden');
+
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                messageEl.classList.add('hidden');
+            }, 3000);
+        }
+
+        // ==========================================
+        // MOCK window.storage FOR DEVELOPMENT
+        // ==========================================
+        // This will be replaced with real window.storage API later
+        if (typeof window.storage === 'undefined') {
+            console.warn('⚠️ window.storage not available. Using localStorage fallback for development.');
+
+            window.storage = {
+                async get(key) {
+                    const value = localStorage.getItem(key);
+                    return value ? { key, value } : null;
+                },
+                async set(key, value) {
+                    localStorage.setItem(key, value);
+                    return { key, value };
+                },
+                async delete(key) {
+                    localStorage.removeItem(key);
+                    return { key, deleted: true };
+                }
+            };
+        }
+
+        // ==========================================
+        // EXPORT FOR EXTERNAL ACCESS
+        // ==========================================
+        window.getDailyPlan = async function () {
+            const result = await window.storage.get(CONFIG.storageKey);
+            return result ? JSON.parse(result.value) : null;
+        };
+    </script>
+
+</body>
+
+</html>
