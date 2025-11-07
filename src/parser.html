@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trade Parser</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'navy-dark': '#1e3a5f',
+                        'navy-medium': '#2c5282',
+                        'blue-primary': '#3b5998',
+                        'blue-hover': '#2d4373',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .processing {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        /* Step indicator */
+        .step-active {
+            background: #3b5998;
+            color: white;
+        }
+
+        .step-completed {
+            background: #10b981;
+            color: white;
+        }
+
+        .step-inactive {
+            background: #e2e8f0;
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 min-h-screen">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-navy-dark text-white px-6 py-3 flex justify-between items-center shadow-lg no-print">
+        <div class="flex items-center gap-6">
+            <h1 class="text-lg font-bold">TRADE PARSER</h1>
+            <div class="flex gap-4 text-sm">
+                <a href="daily-plan.html" class="hover:text-blue-300 transition-colors">📋 Daily Plan</a>
+                <a href="parser.html" class="text-blue-300 font-semibold">⚙️ Parser</a>
+                <a href="dashboard.html" class="hover:text-blue-300 transition-colors">📊 Dashboard</a>
+            </div>
+        </div>
+        <div class="text-sm text-slate-300" id="current-date"></div>
+    </nav>
+
+    <!-- Status Message -->
+    <div id="status-message" class="hidden slide-in max-w-7xl mx-auto mt-4 px-4">
+        <!-- Content injected via JS -->
+    </div>
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto p-4 py-6">
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+            <!-- ============================================ -->
+            <!-- SIDEBAR: Daily Plan Summary -->
+            <!-- ============================================ -->
+            <aside class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-lg border border-slate-200 sticky top-6">
+                    <div class="bg-blue-primary text-white px-4 py-3 rounded-t-lg">
+                        <h2 class="font-semibold text-sm uppercase tracking-wide">📋 Tu Plan de Hoy</h2>
+                    </div>
+
+                    <div class="p-4 space-y-4" id="plan-summary">
+                        <!-- Loaded via JS -->
+                        <div class="text-center py-8 text-slate-400 text-sm">
+                            <p>Cargando plan...</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- ============================================ -->
+            <!-- MAIN CONTENT: Parser Steps -->
+            <!-- ============================================ -->
+            <main class="lg:col-span-3 space-y-6">
+
+                <!-- Step Indicator -->
+                <div class="bg-white rounded-lg shadow-lg border border-slate-200 p-6">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="step-active w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                                1</div>
+                            <span class="text-sm font-medium text-slate-700">Pegar Datos</span>
+                        </div>
+                        <div class="h-px bg-slate-300 flex-1 mx-3"></div>
+
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="step-inactive w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                                2</div>
+                            <span class="text-sm font-medium text-slate-700">Detectar</span>
+                        </div>
+                        <div class="h-px bg-slate-300 flex-1 mx-3"></div>
+
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="step-inactive w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                                3</div>
+                            <span class="text-sm font-medium text-slate-700">Completar</span>
+                        </div>
+                        <div class="h-px bg-slate-300 flex-1 mx-3"></div>
+
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="step-inactive w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                                4</div>
+                            <span class="text-sm font-medium text-slate-700">Guardar</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================ -->
+                <!-- STEP 1: Paste Data -->
+                <!-- ============================================ -->
+                <section class="bg-white rounded-lg shadow-lg border border-slate-200" id="step-1">
+                    <div class="bg-slate-100 px-6 py-3 border-b border-slate-200">
+                        <h3 class="font-semibold text-slate-700 uppercase text-sm tracking-wide">📊 Paso 1: Pegar Datos
+                            de la Plataforma</h3>
+                    </div>
+
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">
+                                Pega aquí los datos del trade (Formato Funding):
+                            </label>
+                            <textarea id="raw-data" rows="12" placeholder="Ejemplo:
+323002810	2024-10-28 19:59:17	SOLUSD	Short	197.96	196.13	1.83	12	21.96	Funding"
+                                class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent font-mono text-sm resize-none"></textarea>
+                            <p class="text-xs text-slate-500 mt-2">
+                                💡 Formato esperado: Order ID, Time (UTC), Symbol, Side, Entry, Exit, PnL per unit,
+                                Volume, PnL total, Type
+                            </p>
+                        </div>
+
+                        <div class="flex justify-between items-center">
+                            <button onclick="clearRawData()"
+                                class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-all">
+                                🔄 Limpiar
+                            </button>
+
+                            <button onclick="detectTrades()"
+                                class="px-6 py-2.5 bg-blue-primary text-white rounded-lg text-sm font-semibold hover:bg-blue-hover transition-all shadow-lg">
+                                🔍 Detectar Trades →
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================ -->
+                <!-- STEP 2: Detection Results (Hidden initially) -->
+                <!-- ============================================ -->
+                <section class="bg-white rounded-lg shadow-lg border border-slate-200 hidden" id="step-2">
+                    <div class="bg-slate-100 px-6 py-3 border-b border-slate-200">
+                        <h3 class="font-semibold text-slate-700 uppercase text-sm tracking-wide">🔍 Paso 2: Trades
+                            Detectados</h3>
+                    </div>
+
+                    <div class="p-6" id="detection-results">
+                        <!-- Populated via JS -->
+                    </div>
+                </section>
+
+                <!-- ============================================ -->
+                <!-- STEP 3: Complete Trade Data (Hidden initially) -->
+                <!-- ============================================ -->
+                <section class="bg-white rounded-lg shadow-lg border border-slate-200 hidden" id="step-3">
+                    <div class="bg-slate-100 px-6 py-3 border-b border-slate-200">
+                        <h3 class="font-semibold text-slate-700 uppercase text-sm tracking-wide">✍️ Paso 3: Completar
+                            Datos del Trade</h3>
+                    </div>
+
+                    <div class="p-6">
+                        <form id="trade-form" class="space-y-6">
+
+                            <!-- Trade Number and Block -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="trade-number" class="block text-sm font-medium text-slate-700 mb-2">
+                                        Trade Number <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number" id="trade-number" name="tradeNumber" required
+                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent">
+                                    <p class="text-xs text-slate-500 mt-1" id="trade-number-hint"></p>
+                                </div>
+
+                                <div>
+                                    <label for="block" class="block text-sm font-medium text-slate-700 mb-2">
+                                        Block
+                                    </label>
+                                    <input type="number" id="block" name="block" value="1"
+                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent">
+                                </div>
+                            </div>
+
+                            <!-- Stop Loss and Take Profit -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="stop-loss" class="block text-sm font-medium text-slate-700 mb-2">
+                                        Stop Loss <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number" step="0.01" id="stop-loss" name="stopLoss" required
+                                        placeholder="0.00"
+                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label for="take-profit" class="block text-sm font-medium text-slate-700 mb-2">
+                                        Take Profit <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number" step="0.01" id="take-profit" name="takeProfit" required
+                                        placeholder="0.00"
+                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent">
+                                </div>
+                            </div>
+
+                            <!-- Planned Risk -->
+                            <div>
+                                <label for="risk-planned" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Riesgo Planeado <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-slate-400">$</span>
+                                    <input type="number" step="0.01" id="risk-planned" name="riskPlanned" required
+                                        placeholder="100.00"
+                                        class="w-full pl-8 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent">
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">
+                                    Riesgo que planeaste antes de entrar al trade
+                                </p>
+                            </div>
+
+                            <!-- Item (Setup) -->
+                            <div>
+                                <label for="item" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Ítem (Setup)
+                                </label>
+                                <input type="text" id="item" name="item"
+                                    placeholder="e.g. Setup limpio, Reversión en soporte"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent">
+                            </div>
+
+                            <!-- Observation -->
+                            <div>
+                                <label for="observation" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Observación
+                                </label>
+                                <textarea id="observation" name="observation" rows="3"
+                                    placeholder="Notas sobre el trade: emociones, ejecución, lo que aprendiste..."
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent resize-none"></textarea>
+                            </div>
+
+                            <!-- Plan Compliance -->
+                            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                                <h4 class="text-sm font-semibold text-slate-700 mb-3">Cumplimiento del Plan</h4>
+                                <div class="space-y-2">
+                                    <label class="flex items-center space-x-3 cursor-pointer">
+                                        <input type="checkbox" id="followed-plan" name="followedPlan" checked
+                                            class="w-5 h-5 text-green-600 rounded focus:ring-2 focus:ring-green-500">
+                                        <span class="text-sm text-slate-700">✅ Seguí el plan</span>
+                                    </label>
+                                    <label class="flex items-center space-x-3 cursor-pointer">
+                                        <input type="checkbox" id="broke-rules" name="brokeRules"
+                                            class="w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500">
+                                        <span class="text-sm text-slate-700">❌ Rompí reglas</span>
+                                    </label>
+                                </div>
+                                <div id="rules-violated-container" class="mt-3 hidden">
+                                    <label class="block text-xs font-medium text-slate-700 mb-2">¿Qué reglas
+                                        rompiste?</label>
+                                    <textarea id="rules-violated" name="rulesViolated" rows="2"
+                                        placeholder="Especifica qué reglas no seguiste..."
+                                        class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-primary resize-none"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Calculated Metrics Preview -->
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <h4 class="text-sm font-semibold text-blue-900 mb-3">📊 Métricas Calculadas (Preview)
+                                </h4>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                    <div>
+                                        <p class="text-blue-700 font-medium">Riesgo Ejecutado</p>
+                                        <p class="text-lg font-bold text-blue-900" id="preview-risk-executed">--</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-blue-700 font-medium">Desviación</p>
+                                        <p class="text-lg font-bold text-blue-900" id="preview-risk-deviation">--</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-blue-700 font-medium">R Planeado</p>
+                                        <p class="text-lg font-bold text-blue-900" id="preview-r-planned">--</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-blue-700 font-medium">R Ejecutado</p>
+                                        <p class="text-lg font-bold text-blue-900" id="preview-r-executed">--</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex justify-between items-center pt-4 border-t border-slate-200">
+                                <button type="button" onclick="goBackToDetection()"
+                                    class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-all">
+                                    ← Volver
+                                </button>
+
+                                <button type="submit"
+                                    class="px-6 py-2.5 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-all shadow-lg">
+                                    💾 Guardar Trade
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- ============================================ -->
+                <!-- STEP 4: Success & Outputs (Hidden initially) -->
+                <!-- ============================================ -->
+                <section class="bg-white rounded-lg shadow-lg border border-slate-200 hidden" id="step-4">
+                    <div class="bg-green-50 px-6 py-3 border-b border-green-200">
+                        <h3 class="font-semibold text-green-800 uppercase text-sm tracking-wide">✅ Trade Guardado
+                            Exitosamente</h3>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+
+                        <!-- Telegram Template -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">📱 Plantilla
+                                Telegram:</label>
+                            <div class="bg-slate-50 border border-slate-300 rounded-lg p-4 font-mono text-sm">
+                                <pre id="telegram-output" class="whitespace-pre-wrap text-slate-800"></pre>
+                            </div>
+                            <button onclick="copyToClipboard('telegram-output')"
+                                class="mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-all">
+                                📋 Copiar
+                            </button>
+                        </div>
+
+                        <!-- CSV Line -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">📄 Línea CSV:</label>
+                            <div
+                                class="bg-slate-50 border border-slate-300 rounded-lg p-4 font-mono text-xs overflow-x-auto">
+                                <pre id="csv-output" class="whitespace-nowrap text-slate-800"></pre>
+                            </div>
+                            <button onclick="copyToClipboard('csv-output')"
+                                class="mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-all">
+                                📋 Copiar
+                            </button>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex justify-center gap-4 pt-4 border-t border-slate-200">
+                            <button onclick="resetParser()"
+                                class="px-6 py-2.5 bg-blue-primary text-white rounded-lg text-sm font-semibold hover:bg-blue-hover transition-all">
+                                ➕ Registrar Otro Trade
+                            </button>
+                            <a href="dashboard.html"
+                                class="px-6 py-2.5 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-all inline-block">
+                                📊 Ver Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT -->
+    <!-- ============================================ -->
+    <script>
+        // ==========================================
+        // CONFIGURATION
+        // ==========================================
+        const CONFIG = {
+            timezone: 'America/Sao_Paulo', // BRT
+            storageKeys: {
+                trades: 'trades-data',
+                dailyPlan: 'daily-plan-today'
+            }
+        };
+
+        // Global state
+        let detectedTrades = [];
+        let currentTrade = null;
+        let dailyPlan = null;
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', async function () {
+            setCurrentDate();
+            await loadDailyPlan();
+            setupEventListeners();
+
+            console.log('✅ Parser initialized');
+        });
+
+        function setCurrentDate() {
+            const today = new Date();
+            const options = {
+                month: '2-digit',
+                day: '2-digit',
+                year: 'numeric',
+                timeZone: CONFIG.timezone
+            };
+            const dateStr = today.toLocaleDateString('en-US', options);
+            document.getElementById('current-date').textContent = dateStr;
+        }
+
+        // ==========================================
+        // LOAD DAILY PLAN
+        // ==========================================
+        async function loadDailyPlan() {
+            try {
+                const result = await window.storage.get(CONFIG.storageKeys.dailyPlan);
+
+                if (result && result.value) {
+                    dailyPlan = JSON.parse(result.value);
+                    renderPlanSummary(dailyPlan);
+                } else {
+                    renderNoPlan();
+                }
+            } catch (error) {
+                console.error('Error loading daily plan:', error);
+                renderNoPlan();
+            }
+        }
+
+        function renderPlanSummary(plan) {
+            const container = document.getElementById('plan-summary');
+
+            container.innerHTML = `
+        <div class="space-y-3">
+          <div class="pb-3 border-b border-slate-200">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Setup del día</p>
+            <p class="text-sm text-slate-700 leading-snug">${plan.aSetup || 'No definido'}</p>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p class="text-xs text-slate-500 font-medium">Max Trades</p>
+              <p class="text-lg font-bold text-slate-800">${plan.maxTrades || '5'}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 font-medium">Max Loss</p>
+              <p class="text-lg font-bold text-slate-800">$${plan.maxDailyLoss || '250'}</p>
+            </div>
+          </div>
+          
+          <div class="bg-amber-50 border border-amber-200 rounded p-3">
+            <p class="text-xs font-semibold text-amber-900 mb-2">⚠️ Circuit Breakers</p>
+            <div class="space-y-1 text-xs text-amber-800">
+              ${plan.circuitBreakers?.twoLosses ? '<p>✓ 2 losses = 30min break</p>' : ''}
+              ${plan.circuitBreakers?.threeLosses ? '<p>✓ 3 losses = done for day</p>' : ''}
+              ${plan.circuitBreakers?.maxHit ? '<p>✓ Max hit = close all</p>' : ''}
+            </div>
+          </div>
+          
+          <div class="pt-3 border-t border-slate-200">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Estado Mental</p>
+            <p class="text-sm font-medium text-slate-700">${plan.mentalState || 'No registrado'}</p>
+          </div>
+        </div>
+      `;
+        }
+
+        function renderNoPlan() {
+            const container = document.getElementById('plan-summary');
+            container.innerHTML = `
+        <div class="text-center py-6">
+          <p class="text-sm text-slate-500 mb-3">⚠️ No hay plan para hoy</p>
+          <a href="daily-plan.html" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+            Crear plan →
+          </a>
+        </div>
+      `;
+        }
+
+        // ==========================================
+        // EVENT LISTENERS
+        // ==========================================
+        function setupEventListeners() {
+            // Show/hide rules violated textarea
+            document.getElementById('broke-rules').addEventListener('change', function () {
+                const container = document.getElementById('rules-violated-container');
+                container.classList.toggle('hidden', !this.checked);
+            });
+
+            // Real-time calculation preview
+            const calculationInputs = ['stop-loss', 'take-profit', 'risk-planned'];
+            calculationInputs.forEach(id => {
+                document.getElementById(id).addEventListener('input', updateCalculationPreview);
+            });
+
+            // Form submission
+            document.getElementById('trade-form').addEventListener('submit', handleTradeSubmit);
+        }
+
+        // ==========================================
+        // STEP 1: CLEAR RAW DATA
+        // ==========================================
+        function clearRawData() {
+            document.getElementById('raw-data').value = '';
+            showMessage('Textarea limpiado', 'info');
+        }
+
+        // ==========================================
+        // STEP 2: DETECT TRADES
+        // ==========================================
+        async function detectTrades() {
+            const rawData = document.getElementById('raw-data').value.trim();
+
+            if (!rawData) {
+                showMessage('Por favor pega los datos del trade primero', 'warning');
+                return;
+            }
+
+            showMessage('🔍 Detectando trades...', 'info');
+            updateStepIndicator(2);
+
+            try {
+                // Parse the data
+                detectedTrades = parseRawData(rawData);
+
+                if (detectedTrades.length === 0) {
+                    throw new Error('No se detectaron trades válidos');
+                }
+
+                // Show detection results
+                renderDetectionResults(detectedTrades);
+
+                // Show step 2
+                document.getElementById('step-2').classList.remove('hidden');
+                document.getElementById('step-2').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                showMessage(`✅ ${detectedTrades.length} trade(s) detectado(s)`, 'success');
+
+            } catch (error) {
+                showMessage('❌ Error: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        function parseRawData(rawData) {
+            const lines = rawData.split('\n').filter(l => l.trim());
+            const trades = [];
+
+            for (const line of lines) {
+                // Split by tab or multiple spaces
+                const parts = line.split(/\t+|\s{2,}/);
+
+                if (parts.length < 9) {
+                    console.warn('Línea ignorada (formato inválido):', line);
+                    continue;
+                }
+
+                try {
+                    const trade = {
+                        orderID: parts[0].trim(),
+                        timeUTC: parts[1].trim(),
+                        symbol: parts[2].trim(),
+                        side: parts[3].trim(),
+                        entry: parseFloat(parts[4]),
+                        exit: parseFloat(parts[5]),
+                        pnlPerUnit: parseFloat(parts[6]),
+                        volume: parseFloat(parts[7]),
+                        pnl: parseFloat(parts[8]),
+                        type: parts[9] ? parts[9].trim() : 'Funding'
+                    };
+
+                    // Convert UTC to BRT
+                    const utcDate = new Date(trade.timeUTC.replace(' ', 'T') + 'Z');
+                    const brtDate = new Date(utcDate.toLocaleString('en-US', { timeZone: CONFIG.timezone }));
+
+                    trade.timeBRT = brtDate.toISOString().slice(0, 19).replace('T', ' ');
+                    trade.openHourBRT = brtDate.getHours();
+
+                    // Determine LONG/SHORT
+                    trade.type = trade.side.toLowerCase().includes('long') ? 'LONG' : 'SHORT';
+
+                    trades.push(trade);
+
+                } catch (error) {
+                    console.warn('Error parseando línea:', line, error);
+                }
+            }
+
+            return trades;
+        }
+
+        function renderDetectionResults(trades) {
+            const container = document.getElementById('detection-results');
+
+            let html = '<div class="space-y-4">';
+
+            trades.forEach((trade, index) => {
+                const profitClass = trade.pnl >= 0 ? 'text-green-600' : 'text-red-600';
+
+                html += `
+          <div class="border border-slate-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+            <div class="flex justify-between items-start mb-3">
+              <div>
+                <h4 class="font-bold text-slate-800">${trade.symbol} <span class="text-sm font-normal ${trade.type === 'LONG' ? 'text-green-600' : 'text-red-600'}">${trade.type}</span></h4>
+                <p class="text-xs text-slate-500">Order ID: ${trade.orderID}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-xl font-bold ${profitClass}">$${trade.pnl.toFixed(2)}</p>
+                <p class="text-xs text-slate-500">${trade.pnlPerUnit > 0 ? '+' : ''}${trade.pnlPerUnit.toFixed(2)} per unit</p>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
+              <div>
+                <p class="text-xs text-slate-500">Entry</p>
+                <p class="font-semibold text-slate-700">${trade.entry}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">Exit</p>
+                <p class="font-semibold text-slate-700">${trade.exit}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">Volume</p>
+                <p class="font-semibold text-slate-700">${trade.volume}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">Time (BRT)</p>
+                <p class="font-semibold text-slate-700">${trade.timeBRT.split(' ')[1].slice(0, 5)}</p>
+              </div>
+            </div>
+            
+            <button 
+              onclick="selectTradeForCompletion(${index})"
+              class="w-full px-4 py-2 bg-blue-primary text-white rounded-lg text-sm font-medium hover:bg-blue-hover transition-all"
+            >
+              ✍️ Completar este Trade
+            </button>
+          </div>
+        `;
+            });
+
+            html += '</div>';
+
+            container.innerHTML = html;
+        }
+
+        // ==========================================
+        // STEP 3: SELECT TRADE FOR COMPLETION
+        // ==========================================
+        async function selectTradeForCompletion(index) {
+            currentTrade = detectedTrades[index];
+
+            updateStepIndicator(3);
+
+            // Get next trade number
+            const nextTradeNumber = await getNextTradeNumber();
+
+            // Pre-fill form
+            document.getElementById('trade-number').value = nextTradeNumber;
+            document.getElementById('trade-number-hint').textContent = `Sugerido: ${nextTradeNumber} (último trade registrado: ${nextTradeNumber - 1})`;
+
+            // Show step 3
+            document.getElementById('step-3').classList.remove('hidden');
+            document.getElementById('step-3').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            showMessage('✍️ Completa los datos del trade', 'info');
+        }
+
+        async function getNextTradeNumber() {
+            try {
+                const result = await window.storage.get(CONFIG.storageKeys.trades);
+
+                if (result && result.value) {
+                    const data = JSON.parse(result.value);
+                    if (data.trades && data.trades.length > 0) {
+                        const maxTradeNumber = Math.max(...data.trades.map(t => t.tradeNumber));
+                        return maxTradeNumber + 1;
+                    }
+                }
+            } catch (error) {
+                console.error('Error getting next trade number:', error);
+            }
+
+            return 1; // First trade
+        }
+
+        function goBackToDetection() {
+            document.getElementById('step-3').classList.add('hidden');
+            updateStepIndicator(2);
+            document.getElementById('step-2').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // ==========================================
+        // CALCULATION PREVIEW
+        // ==========================================
+        function updateCalculationPreview() {
+            const stopLoss = parseFloat(document.getElementById('stop-loss').value) || 0;
+            const takeProfit = parseFloat(document.getElementById('take-profit').value) || 0;
+            const riskPlanned = parseFloat(document.getElementById('risk-planned').value) || 0;
+
+            if (!currentTrade || !stopLoss || !riskPlanned) {
+                return;
+            }
+
+            // Calculate risk executed
+            const entry = currentTrade.entry;
+            const volume = currentTrade.volume;
+            const riskPerUnit = Math.abs(entry - stopLoss);
+            const riskExecuted = riskPerUnit * volume;
+
+            // Calculate deviation
+            const deviation = riskExecuted - riskPlanned;
+            const deviationPercent = ((deviation / riskPlanned) * 100).toFixed(1);
+
+            // Calculate R values
+            const rPlanned = riskPlanned > 0 ? (currentTrade.pnl / riskPlanned).toFixed(2) : '0.00';
+            const rExecuted = riskExecuted > 0 ? (currentTrade.pnl / riskExecuted).toFixed(2) : '0.00';
+
+            // Update preview
+            document.getElementById('preview-risk-executed').textContent = `$${riskExecuted.toFixed(2)}`;
+            document.getElementById('preview-risk-deviation').textContent = `${deviation > 0 ? '+' : ''}$${deviation.toFixed(2)} (${deviationPercent > 0 ? '+' : ''}${deviationPercent}%)`;
+            document.getElementById('preview-r-planned').textContent = `${rPlanned}R`;
+            document.getElementById('preview-r-executed').textContent = `${rExecuted}R`;
+        }
+
+        // ==========================================
+        // STEP 4: SAVE TRADE
+        // ==========================================
+        async function handleTradeSubmit(e) {
+            e.preventDefault();
+
+            if (!currentTrade) {
+                showMessage('❌ Error: No hay trade seleccionado', 'error');
+                return;
+            }
+
+            showMessage('💾 Guardando trade...', 'info');
+
+            try {
+                // Build complete trade object
+                const formData = new FormData(e.target);
+                const completeTrade = buildCompleteTrade(currentTrade, formData);
+
+                // Validate against daily plan
+                const validation = validateAgainstPlan(completeTrade);
+                if (!validation.valid) {
+                    if (!confirm(validation.message + '\n\n¿Guardar de todos modos?')) {
+                        return;
+                    }
+                }
+
+                // Save to storage
+                await saveTrade(completeTrade);
+
+                // Generate outputs
+                generateOutputs(completeTrade);
+
+                // Show success step
+                updateStepIndicator(4);
+                document.getElementById('step-3').classList.add('hidden');
+                document.getElementById('step-4').classList.remove('hidden');
+                document.getElementById('step-4').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                showMessage('✅ Trade guardado exitosamente', 'success');
+
+            } catch (error) {
+                showMessage('❌ Error guardando trade: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        function buildCompleteTrade(detectedTrade, formData) {
+            const stopLoss = parseFloat(formData.get('stopLoss'));
+            const takeProfit = parseFloat(formData.get('takeProfit'));
+            const riskPlanned = parseFloat(formData.get('riskPlanned'));
+
+            // Calculate metrics
+            const entry = detectedTrade.entry;
+            const volume = detectedTrade.volume;
+            const riskPerUnit = Math.abs(entry - stopLoss);
+            const riskExecuted = riskPerUnit * volume;
+            const riskDeviation = riskExecuted - riskPlanned;
+            const riskDeviationPercent = (riskDeviation / riskPlanned) * 100;
+
+            // Risk deviation flag
+            let flag = '✓';
+            if (Math.abs(riskDeviationPercent) > 20) {
+                flag = '❌';
+            } else if (Math.abs(riskDeviationPercent) > 10) {
+                flag = '⚠';
+            }
+
+            const rPlanned = riskPlanned > 0 ? detectedTrade.pnl / riskPlanned : 0;
+            const rExecuted = riskExecuted > 0 ? detectedTrade.pnl / riskExecuted : 0;
+
+            // Parse rules violated
+            let rulesViolated = [];
+            if (formData.get('brokeRules') === 'on') {
+                const rulesText = formData.get('rulesViolated') || '';
+                rulesViolated = rulesText.split('\n').filter(r => r.trim());
+            }
+
+            return {
+                tradeNumber: parseInt(formData.get('tradeNumber')),
+                block: parseInt(formData.get('block')) || 1,
+                orderIDs: [detectedTrade.orderID],
+                isGrouped: false,
+                groupCount: 1,
+                positions: [],
+
+                // Times
+                openTimeBRT: detectedTrade.timeBRT,
+                closeTimeBRT: detectedTrade.timeBRT, // Same for now (we don't have close time from Funding data)
+                openTimeUTC: detectedTrade.timeUTC,
+                closeTimeUTC: detectedTrade.timeUTC,
+                openHourBRT: detectedTrade.openHourBRT,
+                openHourRange: getHourRange(detectedTrade.openHourBRT),
+                openDayOfWeek: getDayOfWeek(new Date(detectedTrade.timeBRT)),
+                duration: 'N/A', // Not available in Funding data
+                durationMinutes: 0,
+
+                // Trade data
+                symbol: detectedTrade.symbol,
+                type: detectedTrade.type,
+                entry: detectedTrade.entry,
+                exitPrice: detectedTrade.exit,
+                stopLoss: stopLoss,
+                takeProfit: takeProfit,
+                volume: volume,
+
+                // Risk and results
+                riskPlanned: riskPlanned,
+                riskExecuted: parseFloat(riskExecuted.toFixed(2)),
+                riskDeviation: parseFloat(riskDeviation.toFixed(2)),
+                riskDeviationFlag: flag,
+                result: detectedTrade.pnl,
+                rPlanned: parseFloat(rPlanned.toFixed(2)),
+                rExecuted: parseFloat(rExecuted.toFixed(2)),
+
+                // Metadata
+                item: formData.get('item') || '',
+                observation: formData.get('observation') || '',
+                followedPlan: formData.get('followedPlan') === 'on',
+                brokeRules: formData.get('brokeRules') === 'on',
+                rulesViolated: rulesViolated,
+
+                // Volume tracking
+                volumeCalculated: false,
+                volumeAssumed: false,
+                volumeSource: 'platform',
+
+                // Timestamps
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+        }
+
+        function getHourRange(hour) {
+            if (hour >= 9 && hour < 12) return '9-12';
+            if (hour >= 12 && hour < 15) return '12-15';
+            if (hour >= 15 && hour < 18) return '15-18';
+            return 'other';
+        }
+
+        function getDayOfWeek(date) {
+            const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            return days[date.getDay()];
+        }
+
+        function validateAgainstPlan(trade) {
+            if (!dailyPlan) {
+                return { valid: true };
+            }
+
+            // Check max trades
+            // TODO: Get current trade count from storage
+
+            // Check max loss
+            if (trade.result < 0) {
+                const maxLoss = parseFloat(dailyPlan.maxDailyLoss) || 0;
+                if (Math.abs(trade.result) > maxLoss) {
+                    return {
+                        valid: false,
+                        message: `⚠️ Este trade excede tu max daily loss ($${maxLoss})`
+                    };
+                }
+            }
+
+            return { valid: true };
+        }
+
+        async function saveTrade(trade) {
+            try {
+                // Get existing trades
+                let tradesData = {
+                    version: '1.0',
+                    lastUpdated: new Date().toISOString(),
+                    totalTrades: 0,
+                    trades: []
+                };
+
+                const result = await window.storage.get(CONFIG.storageKeys.trades);
+                if (result && result.value) {
+                    tradesData = JSON.parse(result.value);
+                }
+
+                // Check for duplicates
+                const isDuplicate = tradesData.trades.some(t =>
+                    t.orderIDs.some(id => trade.orderIDs.includes(id))
+                );
+
+                if (isDuplicate) {
+                    throw new Error('Trade duplicado: Order ID ya existe');
+                }
+
+                // Add trade
+                tradesData.trades.push(trade);
+                tradesData.totalTrades = tradesData.trades.length;
+                tradesData.lastUpdated = new Date().toISOString();
+
+                // Save
+                await window.storage.set(CONFIG.storageKeys.trades, JSON.stringify(tradesData));
+
+                console.log('✅ Trade saved:', trade);
+
+            } catch (error) {
+                throw new Error('Error guardando en storage: ' + error.message);
+            }
+        }
+
+        function generateOutputs(trade) {
+            // Telegram template
+            const telegram = `
+🔹 Trade #${trade.tradeNumber} - ${trade.symbol}
+${trade.type === 'LONG' ? '📈 LONG' : '📉 SHORT'}
+
+Entry: ${trade.entry}
+Exit: ${trade.exitPrice}
+SL: ${trade.stopLoss}
+TP: ${trade.takeProfit}
+
+Volume: ${trade.volume}
+Result: $${trade.result.toFixed(2)}
+R Executed: ${trade.rExecuted}R
+
+${trade.item ? `Setup: ${trade.item}` : ''}
+${trade.observation ? `\nNotes: ${trade.observation}` : ''}
+      `.trim();
+
+            document.getElementById('telegram-output').textContent = telegram;
+
+            // CSV line
+            const csv = [
+                trade.tradeNumber,
+                trade.block,
+                trade.orderIDs.join(';'),
+                trade.symbol,
+                trade.type,
+                trade.entry,
+                trade.exitPrice,
+                trade.stopLoss,
+                trade.takeProfit,
+                trade.volume,
+                trade.riskPlanned,
+                trade.riskExecuted,
+                trade.riskDeviation,
+                trade.result,
+                trade.rPlanned,
+                trade.rExecuted,
+                trade.openTimeBRT,
+                trade.item,
+                trade.observation,
+                trade.followedPlan ? 'Yes' : 'No',
+                trade.brokeRules ? 'Yes' : 'No'
+            ].join(',');
+
+            document.getElementById('csv-output').textContent = csv;
+        }
+
+        // ==========================================
+        // RESET PARSER
+        // ==========================================
+        function resetParser() {
+            // Clear all forms
+            document.getElementById('raw-data').value = '';
+            document.getElementById('trade-form').reset();
+
+            // Hide steps
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('step-3').classList.add('hidden');
+            document.getElementById('step-4').classList.add('hidden');
+
+            // Reset state
+            detectedTrades = [];
+            currentTrade = null;
+
+            // Reset step indicator
+            updateStepIndicator(1);
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            showMessage('Parser reiniciado', 'info');
+        }
+
+        // ==========================================
+        // UTILITIES
+        // ==========================================
+        function updateStepIndicator(activeStep) {
+            for (let i = 1; i <= 4; i++) {
+                const stepEl = document.querySelector(`.step-active, .step-completed, .step-inactive`);
+                // This is simplified - in production you'd target each step individually
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('status-message');
+
+            messageEl.className = 'slide-in max-w-7xl mx-auto mt-4 px-4';
+
+            let bgColor, textColor, borderColor;
+
+            if (type === 'success') {
+                bgColor = 'bg-green-50';
+                textColor = 'text-green-800';
+                borderColor = 'border-green-200';
+            } else if (type === 'error') {
+                bgColor = 'bg-red-50';
+                textColor = 'text-red-800';
+                borderColor = 'border-red-200';
+            } else if (type === 'warning') {
+                bgColor = 'bg-amber-50';
+                textColor = 'text-amber-800';
+                borderColor = 'border-amber-200';
+            } else {
+                bgColor = 'bg-blue-50';
+                textColor = 'text-blue-800';
+                borderColor = 'border-blue-200';
+            }
+
+            messageEl.innerHTML = `
+        <div class="${bgColor} ${textColor} ${borderColor} border rounded-lg px-4 py-3 text-sm font-medium">
+          ${text}
+        </div>
+      `;
+
+            messageEl.classList.remove('hidden');
+
+            setTimeout(() => {
+                messageEl.classList.add('hidden');
+            }, 5000);
+        }
+
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+
+            navigator.clipboard.writeText(text).then(() => {
+                showMessage('✅ Copiado al portapapeles', 'success');
+            }).catch(err => {
+                showMessage('❌ Error copiando: ' + err, 'error');
+            });
+        }
+
+        // ==========================================
+        // MOCK window.storage FOR DEVELOPMENT
+        // ==========================================
+        if (typeof window.storage === 'undefined') {
+            console.warn('⚠️ window.storage not available. Using localStorage fallback.');
+
+            window.storage = {
+                async get(key) {
+                    const value = localStorage.getItem(key);
+                    return value ? { key, value } : null;
+                },
+                async set(key, value) {
+                    localStorage.setItem(key, value);
+                    return { key, value };
+                },
+                async delete(key) {
+                    localStorage.removeItem(key);
+                    return { key, deleted: true };
+                }
+            };
+        }
+    </script>
+
+</body>
+
+</html>
