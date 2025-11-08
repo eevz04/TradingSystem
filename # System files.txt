@@ -1,0 +1,24 @@
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Backups
+backups/*
+!backups/.gitkeep
+
+# Test outputs
+tests/output/
+
+# Temporary files
+*.tmp
+*~

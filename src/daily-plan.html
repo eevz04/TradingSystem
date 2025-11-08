@@ -211,343 +211,353 @@
                 </section>
 
                 <!-- ============================================ -->
-                <!-- SECTION 2: TRADING PLAN -->
+                <!-- SECTIONS 2 & 3: TRADING PLAN + RISK (2 COLUMNS) -->
                 <!-- ============================================ -->
-                <section class="p-8">
-                    <div
-                        class="bg-blue-primary text-white px-6 py-3 -mx-8 -mt-8 mb-6 font-semibold text-sm uppercase tracking-wider">
-                        Trading Plan
-                    </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8">
 
-                    <!-- A-Setup for Today -->
-                    <div>
-                        <label for="a-setup"
-                            class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
-                            A-Setup for Today
-                        </label>
-                        <textarea id="a-setup" name="aSetup" rows="3" placeholder="Context + Trigger + Invalidation"
-                            required
-                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none"></textarea>
-                    </div>
-
-                    <!-- Key Levels & Alerts -->
-                    <div class="mt-6">
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
-                            Key Levels & Alerts
-                        </label>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-
-                            <!-- Resistance 2 -->
-                            <div>
-                                <label for="resistance-2"
-                                    class="block text-xs font-semibold text-red-600 mb-1.5 uppercase tracking-wide">
-                                    Resistance 2
-                                </label>
-                                <input type="number" step="0.01" id="resistance-2" name="resistance2" placeholder="0.00"
-                                    class="w-full px-3 py-2 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all text-sm">
-                            </div>
-
-                            <!-- Resistance 1 -->
-                            <div>
-                                <label for="resistance-1"
-                                    class="block text-xs font-semibold text-red-600 mb-1.5 uppercase tracking-wide">
-                                    Resistance 1
-                                </label>
-                                <input type="number" step="0.01" id="resistance-1" name="resistance1" placeholder="0.00"
-                                    class="w-full px-3 py-2 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all text-sm">
-                            </div>
-
-                            <!-- Pivot -->
-                            <div>
-                                <label for="pivot"
-                                    class="block text-xs font-semibold text-indigo-600 mb-1.5 uppercase tracking-wide">
-                                    Pivot
-                                </label>
-                                <input type="number" step="0.01" id="pivot" name="pivot" placeholder="0.00"
-                                    class="w-full px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all text-sm">
-                            </div>
-
-                            <!-- Support 1 -->
-                            <div>
-                                <label for="support-1"
-                                    class="block text-xs font-semibold text-green-600 mb-1.5 uppercase tracking-wide">
-                                    Support 1
-                                </label>
-                                <input type="number" step="0.01" id="support-1" name="support1" placeholder="0.00"
-                                    class="w-full px-3 py-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all text-sm">
-                            </div>
-
-                            <!-- Support 2 -->
-                            <div>
-                                <label for="support-2"
-                                    class="block text-xs font-semibold text-green-600 mb-1.5 uppercase tracking-wide">
-                                    Support 2
-                                </label>
-                                <input type="number" step="0.01" id="support-2" name="support2" placeholder="0.00"
-                                    class="w-full px-3 py-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all text-sm">
-                            </div>
-
-                            <!-- VWAP/POC -->
-                            <div>
-                                <label for="vwap-poc"
-                                    class="block text-xs font-semibold text-indigo-600 mb-1.5 uppercase tracking-wide">
-                                    VWAP/POC
-                                </label>
-                                <input type="number" step="0.01" id="vwap-poc" name="vwapPoc" placeholder="0.00"
-                                    class="w-full px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all text-sm">
-                            </div>
+                    <!-- LEFT COLUMN: TRADING PLAN -->
+                    <section class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                        <div class="bg-[#3b5998] text-white px-6 py-3 font-semibold text-sm uppercase tracking-wider">
+                            Trading Plan
                         </div>
-                    </div>
 
-                    <!-- What I Will NOT Do Today -->
-                    <div class="mt-6">
-                        <label for="what-not-do"
-                            class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
-                            What I Will NOT Do Today
-                        </label>
-                        <textarea id="what-not-do" name="whatNotDo" rows="3"
-                            placeholder="e.g. No revenge trades, no trading during lunch chop, no adding to losers"
-                            required
-                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none"></textarea>
-                    </div>
-
-                    <!-- Mental State Check -->
-                    <div class="mt-6">
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
-                            Mental State Check
-                        </label>
-                        <div class="flex flex-wrap gap-4">
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="radio" name="mentalState" value="Focused" required
-                                    class="w-4 h-4 text-blue-primary focus:ring-2 focus:ring-blue-primary">
-                                <span class="text-sm text-slate-700 font-medium">Focused</span>
-                            </label>
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="radio" name="mentalState" value="Neutral"
-                                    class="w-4 h-4 text-blue-primary focus:ring-2 focus:ring-blue-primary">
-                                <span class="text-sm text-slate-700 font-medium">Neutral</span>
-                            </label>
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="radio" name="mentalState" value="Anxious"
-                                    class="w-4 h-4 text-blue-primary focus:ring-2 focus:ring-blue-primary">
-                                <span class="text-sm text-slate-700 font-medium">Anxious</span>
-                            </label>
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="radio" name="mentalState" value="Tired"
-                                    class="w-4 h-4 text-blue-primary focus:ring-2 focus:ring-blue-primary">
-                                <span class="text-sm text-slate-700 font-medium">Tired</span>
-                            </label>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- ============================================ -->
-                <!-- SECTION 3: RISK MANAGEMENT -->
-                <!-- ============================================ -->
-                <section class="p-8">
-                    <div
-                        class="bg-blue-primary text-white px-6 py-3 -mx-8 -mt-8 mb-6 font-semibold text-sm uppercase tracking-wider">
-                        Risk Management
-                    </div>
-
-                    <!-- Daily Risk Parameters -->
-                    <div class="mb-6">
-                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wide mb-4">Daily Risk Parameters
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                            <!-- Max Daily Loss -->
+                        <div class="p-6 space-y-6">
+                            <!-- A-Setup for Today -->
                             <div>
-                                <label for="max-daily-loss" class="block text-sm font-medium text-slate-600 mb-1.5">
-                                    Max Daily Loss
+                                <label for="a-setup"
+                                    class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                                    A-Setup for Today
                                 </label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-2.5 text-slate-400">$</span>
-                                    <input type="number" id="max-daily-loss" name="maxDailyLoss" placeholder="500"
-                                        required
-                                        class="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                                <textarea id="a-setup" name="aSetup" rows="3"
+                                    placeholder="Context + Trigger + Invalidation" required
+                                    class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3b5998] focus:border-transparent transition-all text-sm resize-none"></textarea>
+                            </div>
+
+                            <!-- Key Levels & Alerts -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
+                                    Key Levels & Alerts
+                                </label>
+                                <div class="grid grid-cols-3 gap-3">
+
+                                    <!-- Resistance 2 -->
+                                    <div>
+                                        <label for="resistance-2"
+                                            class="block text-xs font-semibold text-red-600 mb-1.5 uppercase">
+                                            Resistance 2
+                                        </label>
+                                        <input type="number" step="0.01" id="resistance-2" name="resistance2"
+                                            placeholder="0.00"
+                                            class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#3b5998] focus:border-transparent">
+                                    </div>
+
+                                    <!-- Resistance 1 -->
+                                    <div>
+                                        <label for="resistance-1"
+                                            class="block text-xs font-semibold text-red-600 mb-1.5 uppercase">
+                                            Resistance 1
+                                        </label>
+                                        <input type="number" step="0.01" id="resistance-1" name="resistance1"
+                                            placeholder="0.00"
+                                            class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#3b5998] focus:border-transparent">
+                                    </div>
+
+                                    <!-- Pivot -->
+                                    <div>
+                                        <label for="pivot"
+                                            class="block text-xs font-semibold text-indigo-600 mb-1.5 uppercase">
+                                            Pivot
+                                        </label>
+                                        <input type="number" step="0.01" id="pivot" name="pivot" placeholder="0.00"
+                                            class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#3b5998] focus:border-transparent">
+                                    </div>
+
+                                    <!-- Support 1 -->
+                                    <div>
+                                        <label for="support-1"
+                                            class="block text-xs font-semibold text-green-600 mb-1.5 uppercase">
+                                            Support 1
+                                        </label>
+                                        <input type="number" step="0.01" id="support-1" name="support1"
+                                            placeholder="0.00"
+                                            class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#3b5998] focus:border-transparent">
+                                    </div>
+
+                                    <!-- Support 2 -->
+                                    <div>
+                                        <label for="support-2"
+                                            class="block text-xs font-semibold text-green-600 mb-1.5 uppercase">
+                                            Support 2
+                                        </label>
+                                        <input type="number" step="0.01" id="support-2" name="support2"
+                                            placeholder="0.00"
+                                            class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#3b5998] focus:border-transparent">
+                                    </div>
+
+                                    <!-- VWAP/POC -->
+                                    <div>
+                                        <label for="vwap-poc"
+                                            class="block text-xs font-semibold text-indigo-600 mb-1.5 uppercase">
+                                            VWAP/POC
+                                        </label>
+                                        <input type="number" step="0.01" id="vwap-poc" name="vwapPoc" placeholder="0.00"
+                                            class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#3b5998] focus:border-transparent">
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Max Position Size -->
+                            <!-- What I Will NOT Do Today -->
                             <div>
-                                <label for="max-position-size" class="block text-sm font-medium text-slate-600 mb-1.5">
-                                    Max Position Size
+                                <label for="what-not-do"
+                                    class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                                    What I Will NOT Do Today
                                 </label>
-                                <input type="text" id="max-position-size" name="maxPositionSize"
-                                    placeholder="shares/contracts"
-                                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                                <textarea id="what-not-do" name="whatNotDo" rows="3"
+                                    placeholder="e.g. No revenge trades, no trading during lunch chop, no adding to losers"
+                                    required
+                                    class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3b5998] focus:border-transparent transition-all text-sm resize-none"></textarea>
                             </div>
 
-                            <!-- Max # of Trades -->
+                            <!-- Mental State Check -->
                             <div>
-                                <label for="max-trades" class="block text-sm font-medium text-slate-600 mb-1.5">
-                                    Max # of Trades
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
+                                    Mental State Check
                                 </label>
-                                <input type="number" id="max-trades" name="maxTrades" value="5" required
-                                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                                <div class="flex flex-wrap gap-4">
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="radio" name="mentalState" value="Focused" required
+                                            class="w-4 h-4 text-[#3b5998] focus:ring-2 focus:ring-[#3b5998]">
+                                        <span class="text-sm text-slate-700 font-medium">Focused</span>
+                                    </label>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="radio" name="mentalState" value="Neutral"
+                                            class="w-4 h-4 text-[#3b5998] focus:ring-2 focus:ring-[#3b5998]">
+                                        <span class="text-sm text-slate-700 font-medium">Neutral</span>
+                                    </label>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="radio" name="mentalState" value="Anxious"
+                                            class="w-4 h-4 text-[#3b5998] focus:ring-2 focus:ring-[#3b5998]">
+                                        <span class="text-sm text-slate-700 font-medium">Anxious</span>
+                                    </label>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="radio" name="mentalState" value="Tired"
+                                            class="w-4 h-4 text-[#3b5998] focus:ring-2 focus:ring-[#3b5998]">
+                                        <span class="text-sm text-slate-700 font-medium">Tired</span>
+                                    </label>
+                                </div>
                             </div>
+                        </div>
+                    </section>
 
-                            <!-- Profit Target -->
+                    <!-- RIGHT COLUMN: RISK MANAGEMENT -->
+                    <section class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                        <div class="bg-[#3b5998] text-white px-6 py-3 font-semibold text-sm uppercase tracking-wider">
+                            Risk Management
+                        </div>
+
+                        <div class="p-6 space-y-6">
+                            <!-- Daily Risk Parameters -->
                             <div>
-                                <label for="profit-target" class="block text-sm font-medium text-slate-600 mb-1.5">
-                                    Profit Target
-                                </label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-2.5 text-slate-400">$</span>
-                                    <input type="number" id="profit-target" name="profitTarget" placeholder="200"
-                                        class="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wide mb-4">Daily Risk
+                                    Parameters</h3>
+                                <div class="space-y-3">
+
+                                    <!-- Max Daily Loss -->
+                                    <div class="grid grid-cols-2 gap-3 items-center">
+                                        <label for="max-daily-loss" class="text-sm font-medium text-slate-700">
+                                            Max Daily Loss
+                                        </label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-2.5 text-slate-400 text-sm">$</span>
+                                            <input type="number" id="max-daily-loss" name="maxDailyLoss" placeholder=""
+                                                required
+                                                class="w-full pl-7 pr-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-[#3b5998] focus:border-transparent text-sm">
+                                        </div>
+                                    </div>
+
+                                    <!-- Max Position Size -->
+                                    <div class="grid grid-cols-2 gap-3 items-center">
+                                        <label for="max-position-size" class="text-sm font-medium text-slate-700">
+                                            Max Position Size
+                                        </label>
+                                        <input type="text" id="max-position-size" name="maxPositionSize"
+                                            placeholder="shares/contracts"
+                                            class="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-[#3b5998] focus:border-transparent text-sm">
+                                    </div>
+
+                                    <!-- Max # of Trades -->
+                                    <div class="grid grid-cols-2 gap-3 items-center">
+                                        <label for="max-trades" class="text-sm font-medium text-slate-700">
+                                            Max # of Trades
+                                        </label>
+                                        <input type="number" id="max-trades" name="maxTrades" value="5" required
+                                            class="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-[#3b5998] focus:border-transparent text-sm">
+                                    </div>
+
+                                    <!-- Profit Target -->
+                                    <div class="grid grid-cols-2 gap-3 items-center">
+                                        <label for="profit-target" class="text-sm font-medium text-slate-700">
+                                            Profit Target
+                                        </label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-2.5 text-slate-400 text-sm">$</span>
+                                            <input type="number" id="profit-target" name="profitTarget" placeholder=""
+                                                class="w-full pl-7 pr-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-[#3b5998] focus:border-transparent text-sm">
+                                        </div>
+                                    </div>
+
+                                    <!-- R per Trade -->
+                                    <div class="grid grid-cols-2 gap-3 items-center">
+                                        <label for="r-per-trade" class="text-sm font-medium text-slate-700">
+                                            R per Trade
+                                        </label>
+                                        <input type="text" id="r-per-trade" name="rPerTrade" value="1%"
+                                            class="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-[#3b5998] focus:border-transparent text-sm">
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- R per Trade -->
+                            <!-- Circuit Breakers -->
+                            <div class="bg-amber-50 border-2 border-amber-400 rounded-lg p-4">
+                                <h4 class="text-xs font-bold text-amber-900 uppercase tracking-wide mb-3">Circuit
+                                    Breakers</h4>
+                                <div class="space-y-2.5">
+                                    <label class="flex items-start space-x-2.5 cursor-pointer">
+                                        <input type="checkbox" name="circuitBreaker1" value="2losses"
+                                            class="mt-0.5 w-4 h-4 text-amber-600 rounded focus:ring-2 focus:ring-amber-500">
+                                        <span class="text-sm text-amber-900">
+                                            <strong>2 losses</strong> = 30min break
+                                        </span>
+                                    </label>
+                                    <label class="flex items-start space-x-2.5 cursor-pointer">
+                                        <input type="checkbox" name="circuitBreaker2" value="3losses" checked
+                                            class="mt-0.5 w-4 h-4 text-red-600 rounded focus:ring-2 focus:ring-red-500">
+                                        <span class="text-sm text-red-900 font-semibold">
+                                            <strong>3 losses</strong> = done for day
+                                        </span>
+                                    </label>
+                                    <label class="flex items-start space-x-2.5 cursor-pointer">
+                                        <input type="checkbox" name="circuitBreaker3" value="maxhit" checked
+                                            class="mt-0.5 w-4 h-4 text-red-600 rounded focus:ring-2 focus:ring-red-500">
+                                        <span class="text-sm text-red-900 font-semibold">
+                                            <strong>Daily max hit</strong> = close all
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Time Restrictions -->
                             <div>
-                                <label for="r-per-trade" class="block text-sm font-medium text-slate-600 mb-1.5">
-                                    R per Trade
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
+                                    Time Restrictions
                                 </label>
-                                <input type="text" id="r-per-trade" name="rPerTrade" value="1%"
-                                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                                <div class="space-y-2">
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" name="timeRestriction" value="first15min"
+                                            class="w-4 h-4 text-[#3b5998] rounded focus:ring-2 focus:ring-[#3b5998]">
+                                        <span class="text-sm text-slate-700">No trades first 15min</span>
+                                    </label>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" name="timeRestriction" value="lunch"
+                                            class="w-4 h-4 text-[#3b5998] rounded focus:ring-2 focus:ring-[#3b5998]">
+                                        <span class="text-sm text-slate-700">No trades 12-1pm</span>
+                                    </label>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" name="timeRestriction" value="flatBy"
+                                            class="w-4 h-4 text-[#3b5998] rounded focus:ring-2 focus:ring-[#3b5998]">
+                                        <span class="text-sm text-slate-700">Flat by 3:30pm</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <!-- Circuit Breakers -->
-                    <div class="bg-amber-50 border-2 border-amber-400 rounded-lg p-5 mb-6">
-                        <h4 class="text-sm font-bold text-amber-900 uppercase tracking-wide mb-4">Circuit Breakers</h4>
-                        <div class="space-y-3">
-                            <label class="flex items-start space-x-3 cursor-pointer">
-                                <input type="checkbox" name="circuitBreaker1" value="2losses"
-                                    class="mt-1 w-5 h-5 text-amber-600 rounded focus:ring-2 focus:ring-amber-500">
-                                <span class="text-sm text-amber-900">
-                                    <strong>2 losses</strong> = 30min break
-                                </span>
-                            </label>
-                            <label class="flex items-start space-x-3 cursor-pointer">
-                                <input type="checkbox" name="circuitBreaker2" value="3losses" checked
-                                    class="mt-1 w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500">
-                                <span class="text-sm text-red-900 font-semibold">
-                                    <strong>3 losses</strong> = done for day
-                                </span>
-                            </label>
-                            <label class="flex items-start space-x-3 cursor-pointer">
-                                <input type="checkbox" name="circuitBreaker3" value="maxhit" checked
-                                    class="mt-1 w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500">
-                                <span class="text-sm text-red-900 font-semibold">
-                                    <strong>Daily max hit</strong> = close all
-                                </span>
-                            </label>
+                    <!-- ============================================ -->
+                    <!-- SECTION 4: SETUP EXECUTION TEMPLATE -->
+                    <!-- ============================================ -->
+                    <section class="p-8">
+                        <div
+                            class="bg-blue-primary text-white px-6 py-3 -mx-8 -mt-8 mb-6 font-semibold text-sm uppercase tracking-wider">
+                            Setup Execution Template
                         </div>
-                    </div>
 
-                    <!-- Time Restrictions -->
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
-                            Time Restrictions
-                        </label>
-                        <div class="flex flex-wrap gap-4">
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="checkbox" name="timeRestriction" value="first15min"
-                                    class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
-                                <span class="text-sm text-slate-700">No trades first 15min</span>
-                            </label>
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="checkbox" name="timeRestriction" value="lunch"
-                                    class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
-                                <span class="text-sm text-slate-700">No trades 12-1pm</span>
-                            </label>
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="checkbox" name="timeRestriction" value="flatBy"
-                                    class="w-4 h-4 text-blue-primary rounded focus:ring-2 focus:ring-blue-primary">
-                                <span class="text-sm text-slate-700">Flat by 3:30pm</span>
-                            </label>
+                        <!-- Template Information -->
+                        <div class="bg-slate-50 border-l-4 border-blue-primary rounded-r-lg p-5 space-y-4 mb-6">
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Context
+                                    Requirements:</h4>
+                                <p class="text-sm text-slate-700 leading-relaxed">
+                                    HTF level present (weekly/daily/monthly pivot, TPO VAH/VAL/POC), liquidity
+                                    identified
+                                    above/below, regime appropriate (not "trend only" for mean reversion)
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Entry
+                                    Triggers:
+                                </h4>
+                                <p class="text-sm text-slate-700 leading-relaxed">
+                                    Price sweep + close back inside range | Footprint shows absorption at level | Delta
+                                    divergence (fails to confirm new high/low) | Volume climax at extremes
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Invalidation
+                                    Rules:</h4>
+                                <p class="text-sm text-slate-700 leading-relaxed">
+                                    Break beyond wick extreme by X ticks | Time stop: no movement in 15min | Context
+                                    change
+                                    (news, regime shift)
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Position
+                                    Management:</h4>
+                                <p class="text-sm text-slate-700 leading-relaxed">
+                                    Entry: Market order on reclaim / Limit at retest | Scaling: Add only on first
+                                    pullback
+                                    if risk unchanged | Exits: Fixed target (VWAP/POC) or trailing stop on structure
+                                    break
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                </section>
 
-                <!-- ============================================ -->
-                <!-- SECTION 4: SETUP EXECUTION TEMPLATE -->
-                <!-- ============================================ -->
-                <section class="p-8">
-                    <div
-                        class="bg-blue-primary text-white px-6 py-3 -mx-8 -mt-8 mb-6 font-semibold text-sm uppercase tracking-wider">
-                        Setup Execution Template
-                    </div>
-
-                    <!-- Template Information -->
-                    <div class="bg-slate-50 border-l-4 border-blue-primary rounded-r-lg p-5 space-y-4 mb-6">
+                        <!-- Today's Specific Setup Notes -->
                         <div>
-                            <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Context
-                                Requirements:</h4>
-                            <p class="text-sm text-slate-700 leading-relaxed">
-                                HTF level present (weekly/daily/monthly pivot, TPO VAH/VAL/POC), liquidity identified
-                                above/below, regime appropriate (not "trend only" for mean reversion)
-                            </p>
+                            <label for="setup-notes"
+                                class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                                Today's Specific Setup Notes
+                            </label>
+                            <textarea id="setup-notes" name="setupNotes" rows="3"
+                                placeholder="Customizations to template for today's market conditions"
+                                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none"></textarea>
                         </div>
-
-                        <div>
-                            <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Entry Triggers:
-                            </h4>
-                            <p class="text-sm text-slate-700 leading-relaxed">
-                                Price sweep + close back inside range | Footprint shows absorption at level | Delta
-                                divergence (fails to confirm new high/low) | Volume climax at extremes
-                            </p>
-                        </div>
-
-                        <div>
-                            <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Invalidation
-                                Rules:</h4>
-                            <p class="text-sm text-slate-700 leading-relaxed">
-                                Break beyond wick extreme by X ticks | Time stop: no movement in 15min | Context change
-                                (news, regime shift)
-                            </p>
-                        </div>
-
-                        <div>
-                            <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Position
-                                Management:</h4>
-                            <p class="text-sm text-slate-700 leading-relaxed">
-                                Entry: Market order on reclaim / Limit at retest | Scaling: Add only on first pullback
-                                if risk unchanged | Exits: Fixed target (VWAP/POC) or trailing stop on structure break
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Today's Specific Setup Notes -->
-                    <div>
-                        <label for="setup-notes"
-                            class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
-                            Today's Specific Setup Notes
-                        </label>
-                        <textarea id="setup-notes" name="setupNotes" rows="3"
-                            placeholder="Customizations to template for today's market conditions"
-                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none"></textarea>
-                    </div>
-                </section>
+                    </section>
 
             </form>
 
             <!-- ============================================ -->
             <!-- ACTIONS BAR -->
             <!-- ============================================ -->
-            <div class="bg-slate-50 px-8 py-6 flex flex-wrap justify-between items-center gap-4 no-print rounded-b-lg">
-                <div class="flex flex-wrap gap-3">
+            <div class="bg-slate-50 px-8 py-6 no-print rounded-b-lg">
+                <div class="flex justify-center items-center gap-3">
                     <button type="button" onclick="loadYesterdayPlan()"
-                        class="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 hover:border-slate-400 transition-all focus:ring-2 focus:ring-blue-primary focus:ring-offset-2">
+                        class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 transition-all">
                         📋 Load Yesterday
                     </button>
                     <button type="button" onclick="clearForm()"
-                        class="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 hover:border-slate-400 transition-all focus:ring-2 focus:ring-blue-primary focus:ring-offset-2">
+                        class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 transition-all">
                         🔄 Reset
                     </button>
-                </div>
-
-                <div class="flex flex-wrap gap-3">
                     <button type="button" onclick="window.print()"
-                        class="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 hover:border-slate-400 transition-all focus:ring-2 focus:ring-blue-primary focus:ring-offset-2">
+                        class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 transition-all">
                         🖨️ Print
                     </button>
                     <button type="button" onclick="savePlan()"
-                        class="px-6 py-2.5 bg-blue-primary text-white rounded-lg font-semibold text-sm hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30 focus:ring-2 focus:ring-blue-primary focus:ring-offset-2">
+                        class="px-6 py-2.5 bg-[#3b5998] text-white rounded-lg font-semibold text-sm hover:bg-[#2d4373] transition-all shadow-lg">
                         💾 Save Plan
                     </button>
                 </div>
