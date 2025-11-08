@@ -368,6 +368,9 @@
                                 </div>
                             </div>
 
+                            <!-- Local Error Message (hidden by default) -->
+                            <div id="form-error-message" class="hidden mb-4 slide-in"></div>
+
                             <!-- Action Buttons -->
                             <div class="flex justify-between items-center pt-4 border-t border-slate-200">
                                 <button type="button" onclick="goBackToDetection()"
@@ -594,11 +597,18 @@
             updateStepIndicator(2);
 
             try {
-                // Parse the data
-                detectedTrades = parseRawData(rawData);
+                // Parse all positions
+                const allPositions = parseRawData(rawData);
+
+                if (allPositions.length === 0) {
+                    throw new Error('No se detectaron posiciones válidas');
+                }
+
+                // Group positions into trades
+                detectedTrades = groupPositions(allPositions);
 
                 if (detectedTrades.length === 0) {
-                    throw new Error('No se detectaron trades válidos');
+                    throw new Error('No se pudieron agrupar las posiciones');
                 }
 
                 // Show detection results
@@ -608,7 +618,14 @@
                 document.getElementById('step-2').classList.remove('hidden');
                 document.getElementById('step-2').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-                showMessage(`✅ ${detectedTrades.length} trade(s) detectado(s)`, 'success');
+                const totalPositions = allPositions.length;
+                const groupedCount = detectedTrades.filter(t => t.isGrouped).length;
+
+                if (groupedCount > 0) {
+                    showMessage(`✅ ${detectedTrades.length} trade(s) detectado(s) de ${totalPositions} posición(es) - ${groupedCount} agrupado(s)`, 'success');
+                } else {
+                    showMessage(`✅ ${detectedTrades.length} trade(s) detectado(s)`, 'success');
+                }
 
             } catch (error) {
                 showMessage('❌ Error: ' + error.message, 'error');
@@ -618,7 +635,7 @@
 
         function parseRawData(rawData) {
             const lines = rawData.split('\n').filter(l => l.trim());
-            const trades = [];
+            const positions = [];
 
             for (const line of lines) {
                 // Split by tab or multiple spaces
@@ -630,7 +647,7 @@
                 }
 
                 try {
-                    const trade = {
+                    const position = {
                         orderID: parts[0].trim(),
                         timeUTC: parts[1].trim(),
                         symbol: parts[2].trim(),
@@ -638,25 +655,147 @@
                         entry: parseFloat(parts[4]),
                         exit: parseFloat(parts[5]),
                         pnlPerUnit: parseFloat(parts[6]),
-                        volume: parseFloat(parts[7]),
+                        volume: parseFloat(parts[7]) || 0,
                         pnl: parseFloat(parts[8]),
-                        type: parts[9] ? parts[9].trim() : 'Funding'
+                        rawType: parts[9] ? parts[9].trim() : 'Funding'
                     };
 
                     // Convert UTC to BRT
-                    const utcDate = new Date(trade.timeUTC.replace(' ', 'T') + 'Z');
+                    const utcDate = new Date(position.timeUTC.replace(' ', 'T') + 'Z');
                     const brtDate = new Date(utcDate.toLocaleString('en-US', { timeZone: CONFIG.timezone }));
 
-                    trade.timeBRT = brtDate.toISOString().slice(0, 19).replace('T', ' ');
-                    trade.openHourBRT = brtDate.getHours();
+                    position.timeBRT = brtDate.toISOString().slice(0, 19).replace('T', ' ');
+                    position.openHourBRT = brtDate.getHours();
 
                     // Determine LONG/SHORT
-                    trade.type = trade.side.toLowerCase().includes('long') ? 'LONG' : 'SHORT';
+                    position.type = position.side.toLowerCase().includes('long') ? 'LONG' : 'SHORT';
 
-                    trades.push(trade);
+                    positions.push(position);
 
                 } catch (error) {
                     console.warn('Error parseando línea:', line, error);
+                }
+            }
+
+            return positions;
+        }
+
+        // ==========================================
+        // GROUPING LOGIC (v2.0)
+        // ==========================================
+        function groupPositions(positions) {
+            if (positions.length === 0) return [];
+
+            const trades = [];
+            const grouped = {};
+
+            // Sort positions by time
+            positions.sort((a, b) => new Date(a.timeBRT) - new Date(b.timeBRT));
+
+            for (const pos of positions) {
+                // Create group key: symbol + type
+                const groupKey = `${pos.symbol}_${pos.type}`;
+
+                if (!grouped[groupKey]) {
+                    grouped[groupKey] = [];
+                }
+
+                // Check if this position belongs to the last trade in this group
+                const currentGroup = grouped[groupKey];
+
+                if (currentGroup.length === 0) {
+                    // First position in this group
+                    currentGroup.push([pos]);
+                } else {
+                    const lastTrade = currentGroup[currentGroup.length - 1];
+                    const lastPos = lastTrade[lastTrade.length - 1];
+
+                    // Check if positions are related (same exit +/- 0.5%)
+                    const exitTolerance = Math.abs(pos.exit - lastPos.exit) / lastPos.exit;
+
+                    // Check time difference (within 4 hours)
+                    const timeDiff = Math.abs(new Date(pos.timeBRT) - new Date(lastPos.timeBRT)) / (1000 * 60 * 60);
+
+                    if (exitTolerance <= 0.005 && timeDiff <= 4) {
+                        // Add to existing trade
+                        lastTrade.push(pos);
+                    } else {
+                        // Start new trade
+                        currentGroup.push([pos]);
+                    }
+                }
+            }
+
+            // Convert grouped positions to trade objects
+            for (const groupKey in grouped) {
+                for (const posGroup of grouped[groupKey]) {
+                    if (posGroup.length === 1) {
+                        // Single position trade
+                        const pos = posGroup[0];
+                        trades.push({
+                            symbol: pos.symbol,
+                            type: pos.type,
+                            entry: pos.entry,
+                            exit: pos.exit,
+                            volume: pos.volume,
+                            pnl: pos.pnl,
+                            timeBRT: pos.timeBRT,
+                            timeUTC: pos.timeUTC,
+                            openHourBRT: pos.openHourBRT,
+                            orderID: pos.orderID,
+                            isGrouped: false,
+                            groupCount: 1,
+                            positions: [{
+                                orderID: pos.orderID,
+                                entryPrice: pos.entry,
+                                exitPrice: pos.exit,
+                                volume: pos.volume,
+                                pnl: pos.pnl,
+                                timeBRT: pos.timeBRT
+                            }]
+                        });
+                    } else {
+                        // Grouped trade - calculate weighted averages
+                        const totalVolume = posGroup.reduce((sum, p) => sum + p.volume, 0);
+                        const totalPnL = posGroup.reduce((sum, p) => sum + p.pnl, 0);
+
+                        // Weighted average entry
+                        const weightedEntry = totalVolume > 0
+                            ? posGroup.reduce((sum, p) => sum + (p.entry * p.volume), 0) / totalVolume
+                            : posGroup.reduce((sum, p) => sum + p.entry, 0) / posGroup.length;
+
+                        // Weighted average exit
+                        const weightedExit = totalVolume > 0
+                            ? posGroup.reduce((sum, p) => sum + (p.exit * p.volume), 0) / totalVolume
+                            : posGroup.reduce((sum, p) => sum + p.exit, 0) / posGroup.length;
+
+                        // First and last times
+                        const firstPos = posGroup[0];
+                        const lastPos = posGroup[posGroup.length - 1];
+
+                        trades.push({
+                            symbol: firstPos.symbol,
+                            type: firstPos.type,
+                            entry: parseFloat(weightedEntry.toFixed(2)),
+                            exit: parseFloat(weightedExit.toFixed(2)),
+                            volume: totalVolume,
+                            pnl: totalPnL,
+                            timeBRT: firstPos.timeBRT,
+                            timeUTC: firstPos.timeUTC,
+                            openHourBRT: firstPos.openHourBRT,
+                            orderID: posGroup.map(p => p.orderID).join(';'),
+                            isGrouped: true,
+                            groupCount: posGroup.length,
+                            positions: posGroup.map(p => ({
+                                orderID: p.orderID,
+                                entryPrice: p.entry,
+                                exitPrice: p.exit,
+                                volume: p.volume,
+                                pnl: p.pnl,
+                                timeBRT: p.timeBRT
+                            }))
+                        });
+                    }
                 }
             }
 
@@ -671,7 +810,69 @@
             trades.forEach((trade, index) => {
                 const profitClass = trade.pnl >= 0 ? 'text-green-600' : 'text-red-600';
 
-                html += `
+                if (trade.isGrouped) {
+                    // Render grouped trade
+                    html += `
+          <div class="border-2 border-blue-300 bg-blue-50 rounded-lg p-4 hover:border-blue-400 transition-colors">
+            <div class="flex justify-between items-start mb-3">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded">
+                    📊 ${trade.groupCount} POSICIONES
+                  </span>
+                  <h4 class="font-bold text-slate-800">${trade.symbol} <span class="text-sm font-normal ${trade.type === 'LONG' ? 'text-green-600' : 'text-red-600'}">${trade.type}</span></h4>
+                </div>
+                <p class="text-xs text-slate-500">Order IDs: ${trade.orderID}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-xl font-bold ${profitClass}">$${trade.pnl.toFixed(2)}</p>
+                <p class="text-xs text-slate-500">Total PnL</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
+              <div>
+                <p class="text-xs text-slate-500">Avg Entry</p>
+                <p class="font-semibold text-slate-700">${trade.entry}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">Avg Exit</p>
+                <p class="font-semibold text-slate-700">${trade.exit}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">Total Volume</p>
+                <p class="font-semibold text-slate-700">${trade.volume}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">First Entry</p>
+                <p class="font-semibold text-slate-700">${trade.timeBRT.split(' ')[1].slice(0, 5)}</p>
+              </div>
+            </div>
+
+            <div class="bg-white rounded border border-blue-200 p-3 mb-3">
+              <p class="text-xs font-semibold text-slate-600 mb-2">Posiciones detectadas:</p>
+              <div class="space-y-1 text-xs">
+                ${trade.positions.map((pos, i) => {
+                    const posProfitClass = pos.pnl >= 0 ? 'text-green-600' : 'text-red-600';
+                    return `<div class="flex justify-between">
+                      <span class="text-slate-600">├─ ${pos.entryPrice} (Vol: ${pos.volume})</span>
+                      <span class="font-semibold ${posProfitClass}">${pos.pnl >= 0 ? '+' : ''}$${pos.pnl.toFixed(2)}</span>
+                    </div>`;
+                }).join('')}
+              </div>
+            </div>
+
+            <button
+              onclick="selectTradeForCompletion(${index})"
+              class="w-full px-4 py-2 bg-blue-primary text-white rounded-lg text-sm font-medium hover:bg-blue-hover transition-all"
+            >
+              ✍️ Completar este Trade
+            </button>
+          </div>
+        `;
+                } else {
+                    // Render simple trade
+                    html += `
           <div class="border border-slate-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
             <div class="flex justify-between items-start mb-3">
               <div>
@@ -680,10 +881,9 @@
               </div>
               <div class="text-right">
                 <p class="text-xl font-bold ${profitClass}">$${trade.pnl.toFixed(2)}</p>
-                <p class="text-xs text-slate-500">${trade.pnlPerUnit > 0 ? '+' : ''}${trade.pnlPerUnit.toFixed(2)} per unit</p>
               </div>
             </div>
-            
+
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
               <div>
                 <p class="text-xs text-slate-500">Entry</p>
@@ -702,8 +902,8 @@
                 <p class="font-semibold text-slate-700">${trade.timeBRT.split(' ')[1].slice(0, 5)}</p>
               </div>
             </div>
-            
-            <button 
+
+            <button
               onclick="selectTradeForCompletion(${index})"
               class="w-full px-4 py-2 bg-blue-primary text-white rounded-lg text-sm font-medium hover:bg-blue-hover transition-all"
             >
@@ -711,6 +911,7 @@
             </button>
           </div>
         `;
+                }
             });
 
             html += '</div>';
@@ -803,6 +1004,9 @@
         async function handleTradeSubmit(e) {
             e.preventDefault();
 
+            // Clear previous errors
+            hideFormError();
+
             if (!currentTrade) {
                 showMessage('❌ Error: No hay trade seleccionado', 'error');
                 return;
@@ -824,7 +1028,11 @@
                 }
 
                 // Save to storage
-                await saveTrade(completeTrade);
+                const saveResult = await saveTrade(completeTrade);
+
+                if (!saveResult.success) {
+                    throw new Error(saveResult.error);
+                }
 
                 // Generate outputs
                 generateOutputs(completeTrade);
@@ -838,7 +1046,7 @@
                 showMessage('✅ Trade guardado exitosamente', 'success');
 
             } catch (error) {
-                showMessage('❌ Error guardando trade: ' + error.message, 'error');
+                showFormError(error.message);
                 console.error(error);
             }
         }
@@ -984,7 +1192,10 @@
                 );
 
                 if (isDuplicate) {
-                    throw new Error('Trade duplicado: Order ID ya existe');
+                    return {
+                        success: false,
+                        error: 'Trade duplicado: Order ID ya existe en el sistema'
+                    };
                 }
 
                 // Add trade
@@ -997,8 +1208,17 @@
 
                 console.log('✅ Trade saved:', trade);
 
+                return {
+                    success: true,
+                    trade: trade
+                };
+
             } catch (error) {
-                throw new Error('Error guardando en storage: ' + error.message);
+                console.error('Error in saveTrade:', error);
+                return {
+                    success: false,
+                    error: 'Error guardando en storage: ' + error.message
+                };
             }
         }
 
@@ -1123,6 +1343,32 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
             setTimeout(() => {
                 messageEl.classList.add('hidden');
             }, 5000);
+        }
+
+        function showFormError(text) {
+            const errorEl = document.getElementById('form-error-message');
+
+            errorEl.innerHTML = `
+    <div class="bg-red-50 text-red-800 border-2 border-red-300 rounded-lg px-4 py-3 text-sm font-medium">
+      <div class="flex items-start gap-3">
+        <span class="text-xl">❌</span>
+        <div class="flex-1">
+          <p class="font-bold mb-1">Error al guardar</p>
+          <p>${text}</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+            errorEl.classList.remove('hidden');
+
+            // Scroll to error (smooth)
+            errorEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function hideFormError() {
+            const errorEl = document.getElementById('form-error-message');
+            errorEl.classList.add('hidden');
         }
 
         function copyToClipboard(elementId) {
