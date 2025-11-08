@@ -263,25 +263,19 @@
                                 </div>
                             </div>
 
-                            <!-- Stop Loss and Take Profit -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="stop-loss" class="block text-sm font-medium text-slate-700 mb-2">
-                                        Stop Loss <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="number" step="0.01" id="stop-loss" name="stopLoss" required
-                                        placeholder="0.00"
-                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent">
-                                </div>
+                            <!-- Stop Loss and Take Profit (Dynamic based on trade type) -->
+                            <div id="stop-loss-container">
+                                <!-- Will be filled dynamically by renderStopLossInputs() -->
+                            </div>
 
-                                <div>
-                                    <label for="take-profit" class="block text-sm font-medium text-slate-700 mb-2">
-                                        Take Profit <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="number" step="0.01" id="take-profit" name="takeProfit" required
-                                        placeholder="0.00"
-                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent">
-                                </div>
+                            <!-- Take Profit -->
+                            <div>
+                                <label for="take-profit" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Take Profit <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" step="0.01" id="take-profit" name="takeProfit" required
+                                    placeholder="0.00"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent">
                             </div>
 
                             <!-- Planned Risk -->
@@ -565,7 +559,8 @@
             });
 
             // Real-time calculation preview
-            const calculationInputs = ['stop-loss', 'take-profit', 'risk-planned'];
+            // Note: stop-loss is now dynamic and handled by renderStopLossInputs()
+            const calculationInputs = ['take-profit', 'risk-planned'];
             calculationInputs.forEach(id => {
                 document.getElementById(id).addEventListener('input', updateCalculationPreview);
             });
@@ -934,11 +929,187 @@
             document.getElementById('trade-number').value = nextTradeNumber;
             document.getElementById('trade-number-hint').textContent = `Sugerido: ${nextTradeNumber} (último trade registrado: ${nextTradeNumber - 1})`;
 
+            // Render stop loss inputs based on trade type
+            renderStopLossInputs();
+
             // Show step 3
             document.getElementById('step-3').classList.remove('hidden');
             document.getElementById('step-3').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
             showMessage('✍️ Completa los datos del trade', 'info');
+        }
+
+        // ==========================================
+        // RENDER STOP LOSS INPUTS (v2.0)
+        // ==========================================
+        function renderStopLossInputs() {
+            const container = document.getElementById('stop-loss-container');
+
+            if (!currentTrade) return;
+
+            if (currentTrade.isGrouped) {
+                // Render stops for each position + apply to all button
+                let html = `
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                        <h4 class="text-sm font-semibold text-slate-700 mb-3">
+                            📊 Trade Agrupado: ${currentTrade.groupCount} Posiciones
+                        </h4>
+                        <div class="space-y-3">
+                `;
+
+                currentTrade.positions.forEach((pos, index) => {
+                    html += `
+                        <div class="bg-white border border-slate-200 rounded p-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <p class="text-xs font-medium text-slate-600">
+                                    Posición ${index + 1}: Entry ${pos.entryPrice} (Vol: ${pos.volume})
+                                </p>
+                                <p class="text-xs font-semibold ${pos.pnl >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                    ${pos.pnl >= 0 ? '+' : ''}$${pos.pnl.toFixed(2)}
+                                </p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Stop Loss <span class="text-red-500">*</span></label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        id="pos-${index}-stop"
+                                        data-position-index="${index}"
+                                        placeholder="0.00"
+                                        oninput="onStopChange(${index})"
+                                        class="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-primary"
+                                        required
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Risk</label>
+                                    <p class="text-sm font-bold text-slate-700 px-3 py-2 bg-slate-100 rounded" id="pos-${index}-risk">--</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-300">
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+                                <p class="text-xs font-semibold text-blue-900 mb-2">🔗 Aplicar mismo stop a todas las posiciones</p>
+                                <div class="flex gap-2">
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        id="apply-stop-input"
+                                        placeholder="Stop Loss"
+                                        class="flex-1 px-3 py-2 border border-blue-300 rounded text-sm focus:ring-2 focus:ring-blue-primary"
+                                    >
+                                    <button
+                                        type="button"
+                                        onclick="applyStopToAll()"
+                                        class="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 transition-all"
+                                    >
+                                        Aplicar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500 mb-1">Risk Ejecutado Total</p>
+                                <p class="text-2xl font-bold text-slate-800" id="total-risk-executed">$0.00</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.innerHTML = html;
+            } else {
+                // Render single stop loss input
+                let html = `
+                    <div>
+                        <label for="stop-loss" class="block text-sm font-medium text-slate-700 mb-2">
+                            Stop Loss <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            id="stop-loss"
+                            name="stopLoss"
+                            required
+                            placeholder="0.00"
+                            oninput="updateCalculationPreview()"
+                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent"
+                        >
+                    </div>
+                `;
+
+                container.innerHTML = html;
+            }
+        }
+
+        // ==========================================
+        // POSITION STOP CHANGE HANDLERS (v2.0)
+        // ==========================================
+        function onStopChange(positionIndex) {
+            if (!currentTrade || !currentTrade.isGrouped) return;
+
+            const position = currentTrade.positions[positionIndex];
+            const stopInput = document.getElementById(`pos-${positionIndex}-stop`);
+            const stop = parseFloat(stopInput.value);
+
+            if (isNaN(stop) || stop === 0) {
+                document.getElementById(`pos-${positionIndex}-risk`).textContent = '--';
+                updateTotalRisk();
+                return;
+            }
+
+            // Calculate risk for this position
+            const riskPerUnit = Math.abs(position.entryPrice - stop);
+            const risk = riskPerUnit * position.volume;
+
+            // Update display
+            document.getElementById(`pos-${positionIndex}-risk`).textContent = `$${risk.toFixed(2)}`;
+
+            // Save in object
+            position.stopLoss = stop;
+            position.riskPerUnit = riskPerUnit;
+            position.riskExecuted = risk;
+
+            // Recalculate total
+            updateTotalRisk();
+            updateCalculationPreview();
+        }
+
+        function updateTotalRisk() {
+            if (!currentTrade || !currentTrade.isGrouped) return;
+
+            const totalRisk = currentTrade.positions.reduce(
+                (sum, p) => sum + (p.riskExecuted || 0),
+                0
+            );
+
+            document.getElementById('total-risk-executed').textContent = `$${totalRisk.toFixed(2)}`;
+
+            currentTrade.riskExecuted = totalRisk;
+        }
+
+        function applyStopToAll() {
+            if (!currentTrade || !currentTrade.isGrouped) return;
+
+            const stopValue = document.getElementById('apply-stop-input').value;
+            const stop = parseFloat(stopValue);
+
+            if (isNaN(stop) || stop === 0) {
+                showMessage('Ingresa un stop válido', 'warning');
+                return;
+            }
+
+            // Apply to all positions
+            currentTrade.positions.forEach((position, index) => {
+                document.getElementById(`pos-${index}-stop`).value = stop;
+                onStopChange(index);
+            });
+
+            showMessage(`Stop ${stop} aplicado a todas las posiciones`, 'success');
         }
 
         async function getNextTradeNumber() {
@@ -966,22 +1137,40 @@
         }
 
         // ==========================================
-        // CALCULATION PREVIEW
+        // CALCULATION PREVIEW (v2.0)
         // ==========================================
         function updateCalculationPreview() {
-            const stopLoss = parseFloat(document.getElementById('stop-loss').value) || 0;
-            const takeProfit = parseFloat(document.getElementById('take-profit').value) || 0;
+            if (!currentTrade) return;
+
             const riskPlanned = parseFloat(document.getElementById('risk-planned').value) || 0;
 
-            if (!currentTrade || !stopLoss || !riskPlanned) {
-                return;
+            let riskExecuted = 0;
+
+            if (currentTrade.isGrouped) {
+                // Use total risk from positions
+                riskExecuted = currentTrade.riskExecuted || 0;
+            } else {
+                // Calculate from single stop loss
+                const stopLossInput = document.getElementById('stop-loss');
+                if (!stopLossInput) return;
+
+                const stopLoss = parseFloat(stopLossInput.value) || 0;
+                if (!stopLoss) return;
+
+                const entry = currentTrade.entry;
+                const volume = currentTrade.volume;
+                const riskPerUnit = Math.abs(entry - stopLoss);
+                riskExecuted = riskPerUnit * volume;
             }
 
-            // Calculate risk executed
-            const entry = currentTrade.entry;
-            const volume = currentTrade.volume;
-            const riskPerUnit = Math.abs(entry - stopLoss);
-            const riskExecuted = riskPerUnit * volume;
+            if (!riskPlanned || riskExecuted === 0) {
+                // Reset preview
+                document.getElementById('preview-risk-executed').textContent = '--';
+                document.getElementById('preview-risk-deviation').textContent = '--';
+                document.getElementById('preview-r-planned').textContent = '--';
+                document.getElementById('preview-r-executed').textContent = '--';
+                return;
+            }
 
             // Calculate deviation
             const deviation = riskExecuted - riskPlanned;
@@ -1052,15 +1241,58 @@
         }
 
         function buildCompleteTrade(detectedTrade, formData) {
-            const stopLoss = parseFloat(formData.get('stopLoss'));
             const takeProfit = parseFloat(formData.get('takeProfit'));
             const riskPlanned = parseFloat(formData.get('riskPlanned'));
 
-            // Calculate metrics
-            const entry = detectedTrade.entry;
-            const volume = detectedTrade.volume;
-            const riskPerUnit = Math.abs(entry - stopLoss);
-            const riskExecuted = riskPerUnit * volume;
+            let stopLoss, riskExecuted, positions, orderIDs;
+
+            if (detectedTrade.isGrouped) {
+                // For grouped trades, use positions data
+                positions = detectedTrade.positions.map(p => ({
+                    ...p,
+                    stopLoss: p.stopLoss,
+                    takeProfit: takeProfit,
+                    riskPerUnit: p.riskPerUnit,
+                    riskExecuted: p.riskExecuted
+                }));
+
+                // Calculate average stop loss
+                stopLoss = positions.reduce((sum, p) => sum + p.stopLoss, 0) / positions.length;
+
+                // Use total risk from positions
+                riskExecuted = detectedTrade.riskExecuted;
+
+                // Collect all order IDs
+                orderIDs = detectedTrade.orderID.split(';');
+
+            } else {
+                // For simple trades, get stop from form
+                stopLoss = parseFloat(formData.get('stopLoss'));
+
+                // Calculate risk executed
+                const entry = detectedTrade.entry;
+                const volume = detectedTrade.volume;
+                const riskPerUnit = Math.abs(entry - stopLoss);
+                riskExecuted = riskPerUnit * volume;
+
+                // Single position
+                positions = [{
+                    orderID: detectedTrade.orderID,
+                    entryPrice: detectedTrade.entry,
+                    exitPrice: detectedTrade.exit,
+                    stopLoss: stopLoss,
+                    takeProfit: takeProfit,
+                    volume: detectedTrade.volume,
+                    pnl: detectedTrade.pnl,
+                    timeBRT: detectedTrade.timeBRT,
+                    riskPerUnit: riskPerUnit,
+                    riskExecuted: riskExecuted
+                }];
+
+                orderIDs = [detectedTrade.orderID];
+            }
+
+            // Calculate deviation
             const riskDeviation = riskExecuted - riskPlanned;
             const riskDeviationPercent = (riskDeviation / riskPlanned) * 100;
 
@@ -1085,10 +1317,10 @@
             return {
                 tradeNumber: parseInt(formData.get('tradeNumber')),
                 block: parseInt(formData.get('block')) || 1,
-                orderIDs: [detectedTrade.orderID],
-                isGrouped: false,
-                groupCount: 1,
-                positions: [],
+                orderIDs: orderIDs,
+                isGrouped: detectedTrade.isGrouped,
+                groupCount: detectedTrade.groupCount,
+                positions: positions,
 
                 // Times
                 openTimeBRT: detectedTrade.timeBRT,
@@ -1106,9 +1338,9 @@
                 type: detectedTrade.type,
                 entry: detectedTrade.entry,
                 exitPrice: detectedTrade.exit,
-                stopLoss: stopLoss,
+                stopLoss: parseFloat(stopLoss.toFixed(2)),
                 takeProfit: takeProfit,
-                volume: volume,
+                volume: detectedTrade.volume,
 
                 // Risk and results
                 riskPlanned: riskPlanned,
