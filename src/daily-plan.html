@@ -526,59 +526,66 @@
                             Setup Execution Template
                         </div>
 
-                        <!-- Template Information -->
-                        <div class="bg-slate-50 border-l-4 border-blue-primary rounded-r-lg p-5 space-y-4 mb-6">
-                            <div>
-                                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Context
-                                    Requirements:</h4>
-                                <p class="text-sm text-slate-700 leading-relaxed">
-                                    HTF level present (weekly/daily/monthly pivot, TPO VAH/VAL/POC), liquidity
-                                    identified
-                                    above/below, regime appropriate (not "trend only" for mean reversion)
-                                </p>
-                            </div>
+                        <!-- Template Information (Collapsible) -->
+                        <details class="mb-6">
+                            <summary class="cursor-pointer text-xs font-bold text-slate-700 uppercase tracking-wide mb-2 hover:text-blue-primary">
+                                📖 Template Guidelines (click to expand)
+                            </summary>
+                            <div class="bg-slate-50 border-l-4 border-blue-primary rounded-r-lg p-5 space-y-4 mt-2">
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Context
+                                        Requirements:</h4>
+                                    <p class="text-sm text-slate-700 leading-relaxed">
+                                        HTF level present (weekly/daily/monthly pivot, TPO VAH/VAL/POC), liquidity
+                                        identified
+                                        above/below, regime appropriate (not "trend only" for mean reversion)
+                                    </p>
+                                </div>
 
-                            <div>
-                                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Entry
-                                    Triggers:
-                                </h4>
-                                <p class="text-sm text-slate-700 leading-relaxed">
-                                    Price sweep + close back inside range | Footprint shows absorption at level | Delta
-                                    divergence (fails to confirm new high/low) | Volume climax at extremes
-                                </p>
-                            </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Entry
+                                        Triggers:
+                                    </h4>
+                                    <p class="text-sm text-slate-700 leading-relaxed">
+                                        Price sweep + close back inside range | Footprint shows absorption at level | Delta
+                                        divergence (fails to confirm new high/low) | Volume climax at extremes
+                                    </p>
+                                </div>
 
-                            <div>
-                                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Invalidation
-                                    Rules:</h4>
-                                <p class="text-sm text-slate-700 leading-relaxed">
-                                    Break beyond wick extreme by X ticks | Time stop: no movement in 15min | Context
-                                    change
-                                    (news, regime shift)
-                                </p>
-                            </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Invalidation
+                                        Rules:</h4>
+                                    <p class="text-sm text-slate-700 leading-relaxed">
+                                        Break beyond wick extreme by X ticks | Time stop: no movement in 15min | Context
+                                        change
+                                        (news, regime shift)
+                                    </p>
+                                </div>
 
-                            <div>
-                                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Position
-                                    Management:</h4>
-                                <p class="text-sm text-slate-700 leading-relaxed">
-                                    Entry: Market order on reclaim / Limit at retest | Scaling: Add only on first
-                                    pullback
-                                    if risk unchanged | Exits: Fixed target (VWAP/POC) or trailing stop on structure
-                                    break
-                                </p>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Position
+                                        Management:</h4>
+                                    <p class="text-sm text-slate-700 leading-relaxed">
+                                        Entry: Market order on reclaim / Limit at retest | Scaling: Add only on first
+                                        pullback
+                                        if risk unchanged | Exits: Fixed target (VWAP/POC) or trailing stop on structure
+                                        break
+                                    </p>
+                                </div>
                             </div>
+                        </details>
+
+                        <!-- Setups Container -->
+                        <div id="setups-container" class="space-y-6">
+                            <!-- Setups will be rendered here by JavaScript -->
                         </div>
 
-                        <!-- Today's Specific Setup Notes -->
-                        <div>
-                            <label for="setup-notes"
-                                class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
-                                Today's Specific Setup Notes
-                            </label>
-                            <textarea id="setup-notes" name="setupNotes" rows="3"
-                                placeholder="Customizations to template for today's market conditions"
-                                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none"></textarea>
+                        <!-- Add Setup Button -->
+                        <div id="add-setup-button-container" class="mt-4">
+                            <button type="button" onclick="addSetup()"
+                                class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium text-sm hover:bg-green-700 transition-all">
+                                ➕ Agregar Setup
+                            </button>
                         </div>
                     </section>
 
@@ -672,11 +679,152 @@
         };
 
         // ==========================================
+        // SETUPS MANAGEMENT
+        // ==========================================
+        let setups = [];
+        let setupIdCounter = 1;
+
+        function initializeSetups() {
+            // Start with one empty setup
+            if (setups.length === 0) {
+                addSetup();
+            } else {
+                renderSetups();
+            }
+        }
+
+        function addSetup() {
+            if (setups.length >= 3) {
+                showMessage('Maximum 3 setups allowed', 'warning');
+                return;
+            }
+
+            const newSetup = {
+                id: `setup-${setupIdCounter++}`,
+                symbol: '',
+                context: '',
+                entry: '',
+                invalidation: '',
+                management: ''
+            };
+
+            setups.push(newSetup);
+            renderSetups();
+        }
+
+        function removeSetup(index) {
+            if (setups.length <= 1) {
+                showMessage('At least one setup is required', 'warning');
+                return;
+            }
+
+            if (confirm('Remove this setup?')) {
+                setups.splice(index, 1);
+                renderSetups();
+            }
+        }
+
+        function renderSetups() {
+            const container = document.getElementById('setups-container');
+            const addButton = document.getElementById('add-setup-button-container');
+
+            // Clear container
+            container.innerHTML = '';
+
+            // Render each setup
+            setups.forEach((setup, index) => {
+                const setupDiv = document.createElement('div');
+                setupDiv.className = 'bg-slate-50 border-2 border-slate-300 rounded-lg p-5 relative';
+                setupDiv.innerHTML = `
+                    <!-- Remove Button -->
+                    ${setups.length > 1 ? `
+                    <button type="button" onclick="removeSetup(${index})"
+                        class="absolute top-3 right-3 px-3 py-1 bg-red-500 text-white rounded text-xs font-medium hover:bg-red-600 transition-all">
+                        × Eliminar
+                    </button>` : ''}
+
+                    <!-- Symbol Selector -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                            Symbol
+                        </label>
+                        <select data-setup-index="${index}" data-field="symbol" onchange="updateSetupField(this)"
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
+                            <option value="">Select symbol...</option>
+                            <option value="NQ" ${setup.symbol === 'NQ' ? 'selected' : ''}>NQ (Nasdaq)</option>
+                            <option value="ES" ${setup.symbol === 'ES' ? 'selected' : ''}>ES (S&P 500)</option>
+                            <option value="YM" ${setup.symbol === 'YM' ? 'selected' : ''}>YM (Dow)</option>
+                            <option value="RTY" ${setup.symbol === 'RTY' ? 'selected' : ''}>RTY (Russell)</option>
+                            <option value="Other" ${setup.symbol === 'Other' ? 'selected' : ''}>Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Context -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                            Context
+                        </label>
+                        <textarea data-setup-index="${index}" data-field="context" oninput="updateSetupField(this)"
+                            rows="2"
+                            placeholder="HTF level, liquidity, regime..."
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none">${setup.context}</textarea>
+                    </div>
+
+                    <!-- Entry Triggers -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                            Entry Triggers
+                        </label>
+                        <textarea data-setup-index="${index}" data-field="entry" oninput="updateSetupField(this)"
+                            rows="2"
+                            placeholder="Price action, footprint, delta, volume..."
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none">${setup.entry}</textarea>
+                    </div>
+
+                    <!-- Invalidation -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                            Invalidation
+                        </label>
+                        <textarea data-setup-index="${index}" data-field="invalidation" oninput="updateSetupField(this)"
+                            rows="2"
+                            placeholder="Stop loss rules, time stops, context change..."
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none">${setup.invalidation}</textarea>
+                    </div>
+
+                    <!-- Management -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+                            Position Management
+                        </label>
+                        <textarea data-setup-index="${index}" data-field="management" oninput="updateSetupField(this)"
+                            rows="2"
+                            placeholder="Entry orders, scaling, exits..."
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm resize-none">${setup.management}</textarea>
+                    </div>
+                `;
+                container.appendChild(setupDiv);
+            });
+
+            // Show/hide add button based on setup count
+            addButton.style.display = setups.length < 3 ? 'block' : 'none';
+        }
+
+        function updateSetupField(element) {
+            const index = parseInt(element.dataset.setupIndex);
+            const field = element.dataset.field;
+            setups[index][field] = element.value;
+        }
+
+        // ==========================================
         // INITIALIZATION
         // ==========================================
         window.addEventListener('DOMContentLoaded', async function () {
             // Set current date
             setCurrentDate();
+
+            // Initialize setups
+            initializeSetups();
 
             // Load today's plan if exists
             await loadTodayPlan();
@@ -684,8 +832,8 @@
             // Setup form validation
             setupFormValidation();
 
-            // Load quick control
-            loadQuickControl();
+            // Load quick control (if needed in future)
+            // loadQuickControl();
 
             console.log('✅ Daily Plan initialized');
         });
@@ -729,6 +877,16 @@
                 return;
             }
 
+            // Validate at least one setup is complete
+            const hasCompleteSetup = setups.some(setup =>
+                setup.symbol && setup.context && setup.entry && setup.invalidation && setup.management
+            );
+
+            if (!hasCompleteSetup) {
+                showMessage('⚠️ At least one setup must be complete (all fields filled)', 'warning');
+                return;
+            }
+
             try {
                 const plan = buildPlanObject();
 
@@ -754,7 +912,7 @@
             const formData = new FormData(form);
 
             return {
-                version: '1.0',
+                version: '2.0',
                 date: getTodayDateKey(),
                 timestamp: new Date().toISOString(),
 
@@ -791,8 +949,15 @@
                 },
                 timeRestrictions: formData.getAll('timeRestriction'),
 
-                // Setup Notes
-                setupNotes: formData.get('setupNotes')
+                // Setups (NEW)
+                setups: setups.map(setup => ({
+                    id: setup.id,
+                    symbol: setup.symbol,
+                    context: setup.context,
+                    entry: setup.entry,
+                    invalidation: setup.invalidation,
+                    management: setup.management
+                }))
             };
         }
 
@@ -890,8 +1055,26 @@
                 });
             }
 
-            // Setup Notes
-            if (plan.setupNotes) form.setupNotes.value = plan.setupNotes;
+            // Load Setups (NEW)
+            if (plan.setups && plan.setups.length > 0) {
+                // Clear existing setups
+                setups = [];
+                // Load setups from plan
+                plan.setups.forEach(savedSetup => {
+                    setups.push({
+                        id: savedSetup.id,
+                        symbol: savedSetup.symbol || '',
+                        context: savedSetup.context || '',
+                        entry: savedSetup.entry || '',
+                        invalidation: savedSetup.invalidation || '',
+                        management: savedSetup.management || ''
+                    });
+                });
+                // Update counter to avoid ID conflicts
+                setupIdCounter = Math.max(...setups.map(s => parseInt(s.id.split('-')[1]) || 0)) + 1;
+                // Render the loaded setups
+                renderSetups();
+            }
         }
 
         // ==========================================
@@ -900,6 +1083,9 @@
         function clearForm() {
             if (confirm('Clear all fields? This will not delete saved plans.')) {
                 document.getElementById('daily-plan-form').reset();
+                // Reset setups
+                setups = [];
+                initializeSetups();
                 showMessage('Form cleared', 'info');
             }
         }
