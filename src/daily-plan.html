@@ -748,15 +748,15 @@
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
                             Symbol
                         </label>
-                        <select data-setup-index="${index}" data-field="symbol" onchange="updateSetupField(this)"
-                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm">
-                            <option value="">Select symbol...</option>
-                            <option value="NQ" ${setup.symbol === 'NQ' ? 'selected' : ''}>NQ (Nasdaq)</option>
-                            <option value="ES" ${setup.symbol === 'ES' ? 'selected' : ''}>ES (S&P 500)</option>
-                            <option value="YM" ${setup.symbol === 'YM' ? 'selected' : ''}>YM (Dow)</option>
-                            <option value="RTY" ${setup.symbol === 'RTY' ? 'selected' : ''}>RTY (Russell)</option>
-                            <option value="Other" ${setup.symbol === 'Other' ? 'selected' : ''}>Other</option>
-                        </select>
+                        <input
+                            type="text"
+                            data-setup-index="${index}"
+                            data-field="symbol"
+                            placeholder="Ej: BTC, ETH, SOL, NQ..."
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent transition-all text-sm"
+                            oninput="updateSetupField(this)"
+                            value="${setup.symbol || ''}"
+                        />
                     </div>
 
                     <!-- Context -->
