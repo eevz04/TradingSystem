@@ -2093,26 +2093,39 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
         }
 
         async function saveQuickAdd() {
+            console.log('=== SAVE QUICK ADD DEBUG ===');
+
             const symbol = document.getElementById('qa-symbol').value;
             const pnl = parseFloat(document.getElementById('qa-pnl').value);
 
+            console.log('Symbol:', symbol);
+            console.log('P&L:', pnl);
+
             // Validation
             if (!symbol || symbol.trim() === '') {
+                console.log('❌ Validation failed: Empty symbol');
                 alert('Por favor ingresa un symbol');
                 return;
             }
 
             if (isNaN(pnl) || pnl === 0) {
+                console.log('❌ Validation failed: Invalid P&L');
                 alert('Por favor ingresa un P&L válido');
                 return;
             }
 
+            console.log('✅ Validation passed');
+
             // Check limits
             const todayTrades = await StorageManager.getTodayTrades();
+            console.log('Today trades count:', todayTrades.length);
+
             const maxTrades = parseInt(document.getElementById('qa-max-trades').value) || 5;
+            console.log('Max trades limit:', maxTrades);
 
             if (todayTrades.length >= maxTrades) {
                 if (!confirm(`⚠️ Ya alcanzaste tu límite de ${maxTrades} trades. ¿Continuar?`)) {
+                    console.log('User cancelled: Max trades limit');
                     return;
                 }
             }
@@ -2121,8 +2134,13 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
             const maxLoss = parseFloat(document.getElementById('qa-max-loss').value) || 400;
             const newTotal = totalPnL + pnl;
 
+            console.log('Total P&L:', totalPnL);
+            console.log('Max loss limit:', maxLoss);
+            console.log('New total after this trade:', newTotal);
+
             if (Math.abs(newTotal) > Math.abs(maxLoss)) {
                 if (!confirm(`⚠️ Este trade excedería tu límite de ${maxLoss}. ¿Continuar?`)) {
+                    console.log('User cancelled: Max loss limit');
                     return;
                 }
             }
@@ -2142,13 +2160,23 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
                     riskExecuted: null
                 };
 
+                console.log('Quick trade object created:', quickTrade);
+                console.log('Calling StorageManager.addTrade()...');
+
                 const success = await StorageManager.addTrade(quickTrade);
 
+                console.log('StorageManager.addTrade() result:', success);
+
                 if (success) {
+                    console.log('✅ Quick Add saved successfully!');
                     alert('✅ Quick Add guardado!');
                     closeQuickAddModal();
+                    console.log('Loading pending quick adds...');
                     await loadPendingQuickAdds();
+                    console.log('Updating running totals...');
+                    await updateRunningTotals();
                 } else {
+                    console.log('❌ StorageManager.addTrade() returned false');
                     alert('❌ Error al guardar');
                 }
 
@@ -2160,19 +2188,32 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
 
         async function loadPendingQuickAdds() {
             try {
+                console.log('=== LOAD PENDING QUICK ADDS ===');
+
                 const todayTrades = await StorageManager.getTodayTrades();
+                console.log('Today trades:', todayTrades);
+
                 const quickAdds = todayTrades.filter(t => t.isQuickAdd === true);
+                console.log('Quick Adds found:', quickAdds.length);
+                console.log('Quick Adds:', quickAdds);
 
                 const pendingSection = document.getElementById('quickAddsPending');
                 const pendingList = document.getElementById('qa-pending-list');
                 const pendingCount = document.getElementById('qa-pending-count');
 
+                if (!pendingSection || !pendingList || !pendingCount) {
+                    console.error('❌ Pending elements not found in DOM');
+                    return;
+                }
+
                 if (quickAdds.length === 0) {
+                    console.log('No quick adds to display, hiding section');
                     pendingSection.classList.add('hidden');
                     return;
                 }
 
                 // Show section
+                console.log('Showing pending section with', quickAdds.length, 'quick adds');
                 pendingSection.classList.remove('hidden');
                 pendingCount.textContent = quickAdds.length;
 
@@ -2202,8 +2243,10 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
                     </div>
                 `).join('');
 
+                console.log('✅ Pending list rendered successfully');
+
             } catch (error) {
-                console.error('Error loading pending quick adds:', error);
+                console.error('❌ Error loading pending quick adds:', error);
             }
         }
 

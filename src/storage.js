@@ -70,17 +70,31 @@ const StorageManager = {
      */
     async addTrade(trade) {
         try {
+            console.log('StorageManager.addTrade() called with:', trade);
+
             const data = await this.getTrades();
-            if (!data) return false;
+            console.log('Current trades data:', data);
+
+            if (!data) {
+                console.error('❌ No trades data found');
+                return false;
+            }
+
+            console.log('Current trades count:', data.trades.length);
 
             trade.timestamp = trade.timestamp || new Date().toISOString();
             data.trades.push(trade);
             data.totalTrades = data.trades.length;
 
+            console.log('New trades count:', data.trades.length);
+            console.log('Calling setTrades()...');
+
             await this.setTrades(data);
+
+            console.log('✅ Trade added successfully to storage');
             return true;
         } catch (error) {
-            console.error('Error adding trade:', error);
+            console.error('❌ Error adding trade:', error);
             return false;
         }
     },
