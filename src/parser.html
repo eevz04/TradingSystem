@@ -312,6 +312,7 @@
                                 </label>
                                 <input type="number" step="0.01" id="take-profit" name="takeProfit"
                                     placeholder="0.00"
+                                    oninput="updateCalculationPreview()"
                                     class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent">
                                 <p class="text-xs text-slate-500 mt-1">
                                     💡 Auto-relleno con exit price. Modifícalo si es necesario.
@@ -327,6 +328,7 @@
                                     <span class="absolute left-3 top-2.5 text-slate-400">$</span>
                                     <input type="number" step="0.01" id="risk-planned" name="riskPlanned" required
                                         placeholder="100.00"
+                                        oninput="updateCalculationPreview()"
                                         class="w-full pl-8 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent">
                                 </div>
                                 <p class="text-xs text-slate-500 mt-1">
@@ -365,6 +367,7 @@
                                     </label>
                                     <label class="flex items-center space-x-3 cursor-pointer">
                                         <input type="checkbox" id="broke-rules" name="brokeRules"
+                                            onchange="toggleBrokeRulesNotes()"
                                             class="w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500">
                                         <span class="text-sm text-slate-700">❌ Rompí reglas</span>
                                     </label>
@@ -603,18 +606,8 @@
         // EVENT LISTENERS
         // ==========================================
         function setupEventListeners() {
-            // Show/hide rules violated textarea
-            document.getElementById('broke-rules').addEventListener('change', function () {
-                const container = document.getElementById('rules-violated-container');
-                container.classList.toggle('hidden', !this.checked);
-            });
-
-            // Real-time calculation preview
-            // Note: stop-loss is now dynamic and handled by renderStopLossInputs()
-            const calculationInputs = ['take-profit', 'risk-planned'];
-            calculationInputs.forEach(id => {
-                document.getElementById(id).addEventListener('input', updateCalculationPreview);
-            });
+            // Note: Broke rules toggle and calculation inputs now use inline onchange handlers
+            // This ensures they work immediately without waiting for setupEventListeners
 
             // Form submission
             document.getElementById('trade-form').addEventListener('submit', handleTradeSubmit);
@@ -1340,6 +1333,27 @@
             document.getElementById('step-3').classList.add('hidden');
             updateStepIndicator(2);
             document.getElementById('step-2').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // ==========================================
+        // BROKE RULES TOGGLE
+        // ==========================================
+        function toggleBrokeRulesNotes() {
+            const checkbox = document.getElementById('broke-rules');
+            const container = document.getElementById('rules-violated-container');
+
+            if (!checkbox || !container) {
+                console.error('Broke rules elements not found');
+                return;
+            }
+
+            if (checkbox.checked) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+                const textarea = document.getElementById('rules-violated');
+                if (textarea) textarea.value = '';
+            }
         }
 
         // ==========================================
