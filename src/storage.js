@@ -42,8 +42,8 @@ const StorageManager = {
      */
     async getTrades() {
         try {
-            const data = await window.storage.getItem(this.KEYS.TRADES);
-            return data || null;
+            const result = await window.storage.get(this.KEYS.TRADES);
+            return result?.value ? JSON.parse(result.value) : null;
         } catch (error) {
             console.error('Error getting trades:', error);
             return null;
@@ -56,7 +56,7 @@ const StorageManager = {
     async setTrades(tradesData) {
         try {
             tradesData.lastUpdated = new Date().toISOString();
-            await window.storage.setItem(this.KEYS.TRADES, tradesData);
+            await window.storage.set(this.KEYS.TRADES, JSON.stringify(tradesData));
             // TODO: Sync to Google Sheets (future)
             return true;
         } catch (error) {
@@ -161,8 +161,8 @@ const StorageManager = {
         try {
             const dateKey = this.formatDateKey(date);
             const key = `${this.KEYS.DAILY_PLAN_PREFIX}${dateKey}`;
-            const plan = await window.storage.getItem(key);
-            return plan || null;
+            const result = await window.storage.get(key);
+            return result?.value ? JSON.parse(result.value) : null;
         } catch (error) {
             console.error('Error getting daily plan:', error);
             return null;
@@ -178,12 +178,12 @@ const StorageManager = {
             const key = `${this.KEYS.DAILY_PLAN_PREFIX}${dateKey}`;
 
             planData.savedAt = new Date().toISOString();
-            await window.storage.setItem(key, planData);
+            await window.storage.set(key, JSON.stringify(planData));
 
             // Update current pointer if saving today's plan
             const today = new Date();
             if (this.isSameDay(date, today)) {
-                await window.storage.setItem(this.KEYS.DAILY_PLAN_CURRENT, dateKey);
+                await window.storage.set(this.KEYS.DAILY_PLAN_CURRENT, dateKey);
             }
 
             return true;
@@ -225,9 +225,15 @@ const StorageManager = {
     async exportAll() {
         try {
             const trades = await this.getTrades();
-            const config = await window.storage.getItem(this.KEYS.CONFIG);
-            const alerts = await window.storage.getItem(this.KEYS.ALERTS);
-            const objectives = await window.storage.getItem(this.KEYS.OBJECTIVES);
+
+            const configResult = await window.storage.get(this.KEYS.CONFIG);
+            const config = configResult?.value ? JSON.parse(configResult.value) : null;
+
+            const alertsResult = await window.storage.get(this.KEYS.ALERTS);
+            const alerts = alertsResult?.value ? JSON.parse(alertsResult.value) : null;
+
+            const objectivesResult = await window.storage.get(this.KEYS.OBJECTIVES);
+            const objectives = objectivesResult?.value ? JSON.parse(objectivesResult.value) : null;
 
             return {
                 trades,
@@ -248,9 +254,9 @@ const StorageManager = {
     async importAll(data) {
         try {
             if (data.trades) await this.setTrades(data.trades);
-            if (data.config) await window.storage.setItem(this.KEYS.CONFIG, data.config);
-            if (data.alerts) await window.storage.setItem(this.KEYS.ALERTS, data.alerts);
-            if (data.objectives) await window.storage.setItem(this.KEYS.OBJECTIVES, data.objectives);
+            if (data.config) await window.storage.set(this.KEYS.CONFIG, JSON.stringify(data.config));
+            if (data.alerts) await window.storage.set(this.KEYS.ALERTS, JSON.stringify(data.alerts));
+            if (data.objectives) await window.storage.set(this.KEYS.OBJECTIVES, JSON.stringify(data.objectives));
             return true;
         } catch (error) {
             console.error('Error importing data:', error);
