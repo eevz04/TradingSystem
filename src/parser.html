@@ -681,6 +681,156 @@
 
         function parseRawData(rawData) {
             const lines = rawData.split('\n').filter(l => l.trim());
+
+            if (lines.length === 0) return [];
+
+            // Detect format type
+            const formatType = detectFormatType(lines);
+            console.log('Detected format:', formatType);
+
+            if (formatType === 'table') {
+                return parseTableFormat(lines);
+            } else {
+                return parseFundingFormat(lines);
+            }
+        }
+
+        /**
+         * Detect if input is Table format or Funding format
+         */
+        function detectFormatType(lines) {
+            const firstLine = lines[0].trim();
+            const parts = firstLine.split(/\t+|\s{2,}/);
+
+            // Table format characteristics:
+            // - Has 8+ columns
+            // - Column 4 contains "Opening" or "Closing"
+            // - Symbol is first column (letters only like ETHUSD, BTCUSD)
+
+            if (parts.length >= 8) {
+                const hasOpeningClosing = parts.some(p =>
+                    p.toLowerCase().includes('opening') ||
+                    p.toLowerCase().includes('closing')
+                );
+
+                const firstColIsSymbol = /^[A-Z]+$/.test(parts[0].replace(/[^A-Z]/g, ''));
+
+                if (hasOpeningClosing && firstColIsSymbol) {
+                    return 'table';
+                }
+            }
+
+            // Default to funding format
+            return 'funding';
+        }
+
+        /**
+         * Parse broker table format
+         * Columns: Symbol, DateTime, OrderID, Side, Position, Volume, Price, P&L, [extras...]
+         */
+        function parseTableFormat(lines) {
+            const positions = [];
+            let currentTrade = null;
+
+            for (const line of lines) {
+                const parts = line.trim().split(/\t+|\s{2,}/);
+
+                // Only use columns 0-7, ignore rest
+                if (parts.length < 8) {
+                    console.warn('Table line ignored (too few columns):', line);
+                    continue;
+                }
+
+                try {
+                    const [
+                        symbolRaw,     // 0: Symbol
+                        dateTime,      // 1: Date/Time (e.g., 04/11/25 00.34)
+                        orderID,       // 2: Order ID
+                        tradeSide,     // 3: Side (Buy/Sell)
+                        posEffect,     // 4: Position (Opening/Closing)
+                        volumeRaw,     // 5: Trade Vol
+                        priceRaw,      // 6: Trade Price
+                        pnlRaw         // 7: P&L
+                        // Ignore columns 8+
+                    ] = parts;
+
+                    // Clean and parse values
+                    const symbol = symbolRaw.replace(/[^A-Z]/g, '').toUpperCase();
+                    const volume = parseFloat(volumeRaw.replace(/[,']/g, ''));
+                    const price = parseFloat(priceRaw.replace(/[,']/g, ''));
+                    const pnl = parseFloat(pnlRaw.replace(/[,']/g, ''));
+
+                    if (!symbol || isNaN(volume) || isNaN(price)) {
+                        console.warn('Invalid data in table line:', line);
+                        continue;
+                    }
+
+                    const isOpening = posEffect.toLowerCase().includes('opening');
+                    const isClosing = posEffect.toLowerCase().includes('closing');
+
+                    // Parse date/time (format: DD/MM/YY HH.MM)
+                    const timeBRT = parseTableDateTime(dateTime);
+
+                    if (isOpening) {
+                        // Start new trade
+                        currentTrade = {
+                            orderID: orderID,
+                            symbol: symbol,
+                            side: tradeSide,
+                            entry: price,
+                            volume: volume,
+                            timeBRT: timeBRT,
+                            timeUTC: timeBRT, // Simplified for now
+                            openHourBRT: new Date(timeBRT).getHours(),
+                            pnl: 0
+                        };
+                    } else if (isClosing && currentTrade) {
+                        // Complete the trade
+                        currentTrade.exit = price;
+                        currentTrade.pnl = pnl;
+                        currentTrade.pnlPerUnit = pnl / volume;
+
+                        // Determine LONG/SHORT
+                        const isBuy = tradeSide.toLowerCase().includes('buy');
+                        const isSell = tradeSide.toLowerCase().includes('sell');
+                        currentTrade.type = isBuy ? 'SHORT' : 'LONG'; // Closing side determines type
+
+                        positions.push(currentTrade);
+                        currentTrade = null;
+                    }
+
+                } catch (error) {
+                    console.warn('Error parsing table line:', line, error);
+                }
+            }
+
+            return positions;
+        }
+
+        /**
+         * Parse date/time from table format (DD/MM/YY HH.MM)
+         */
+        function parseTableDateTime(dateTimeStr) {
+            try {
+                // Format: "04/11/25 00.34"
+                const [datePart, timePart] = dateTimeStr.trim().split(/\s+/);
+                const [day, month, year] = datePart.split('/');
+                const [hour, minute] = timePart.split('.');
+
+                const fullYear = 2000 + parseInt(year);
+                const date = new Date(fullYear, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+
+                return date.toISOString().slice(0, 19).replace('T', ' ');
+            } catch (error) {
+                console.error('Error parsing table date:', dateTimeStr, error);
+                return new Date().toISOString().slice(0, 19).replace('T', ' ');
+            }
+        }
+
+        /**
+         * Parse original Funding format (backwards compatibility)
+         */
+        function parseFundingFormat(lines) {
             const positions = [];
 
             for (const line of lines) {
@@ -688,7 +838,7 @@
                 const parts = line.split(/\t+|\s{2,}/);
 
                 if (parts.length < 9) {
-                    console.warn('Línea ignorada (formato inválido):', line);
+                    console.warn('Funding line ignored (formato inválido):', line);
                     continue;
                 }
 
@@ -719,7 +869,7 @@
                     positions.push(position);
 
                 } catch (error) {
-                    console.warn('Error parseando línea:', line, error);
+                    console.warn('Error parseando funding line:', line, error);
                 }
             }
 
