@@ -1726,32 +1726,99 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
             await loadPendingQuickAdds();
         }
 
+        // ==========================================
+        // DAILY LIMITS PERSISTENCE
+        // ==========================================
+
+        function formatDateKey(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        async function saveTodayLimits(maxLoss, maxTrades) {
+            try {
+                const today = new Date();
+                const dateKey = formatDateKey(today);
+
+                const limitsData = {
+                    date: dateKey,
+                    maxDailyLoss: maxLoss,
+                    maxTrades: maxTrades,
+                    savedAt: new Date().toISOString()
+                };
+
+                await window.storage.set(`limits-${dateKey}`, JSON.stringify(limitsData));
+                console.log('Límites guardados:', limitsData);
+                return true;
+            } catch (error) {
+                console.error('Error saving limits:', error);
+                return false;
+            }
+        }
+
+        async function loadTodayLimits() {
+            try {
+                const today = new Date();
+                const dateKey = formatDateKey(today);
+
+                // Intentar cargar límites guardados
+                const result = await window.storage.get(`limits-${dateKey}`);
+                if (result?.value) {
+                    const limits = JSON.parse(result.value);
+                    console.log('Límites cargados:', limits);
+                    return {
+                        maxDailyLoss: limits.maxDailyLoss,
+                        maxTrades: limits.maxTrades
+                    };
+                }
+
+                // Si no hay límites guardados, buscar en daily plan
+                if (dailyPlan) {
+                    console.log('Usando límites del Daily Plan');
+                    return {
+                        maxDailyLoss: dailyPlan.riskManagement?.maxDailyLoss ||
+                                      dailyPlan.maxDailyLoss || 400,
+                        maxTrades: dailyPlan.riskManagement?.maxTrades ||
+                                  dailyPlan.maxTrades || 5
+                    };
+                }
+
+                // Valores por defecto
+                console.log('Usando límites por defecto');
+                return { maxDailyLoss: 400, maxTrades: 5 };
+
+            } catch (error) {
+                console.error('Error loading limits:', error);
+                return { maxDailyLoss: 400, maxTrades: 5 };
+            }
+        }
+
         async function openQuickAddModal() {
             // Show modal
             document.getElementById('quickAddModal').classList.remove('hidden');
 
-            // Load limits from daily plan or use defaults
-            let maxLoss = 400;  // Default
-            let maxTrades = 5;  // Default
+            // Cargar límites guardados del día
+            const limits = await loadTodayLimits();
 
-            if (dailyPlan) {
-                maxLoss = dailyPlan.riskManagement?.maxDailyLoss ||
-                          dailyPlan.maxDailyLoss ||
-                          400;
-                maxTrades = dailyPlan.riskManagement?.maxTrades ||
-                            dailyPlan.maxTrades ||
-                            5;
-            }
-
-            // Set limits in inputs (editable)
-            document.getElementById('qa-max-loss').value = maxLoss;
-            document.getElementById('qa-max-trades').value = maxTrades;
+            // Setear límites en los inputs
+            document.getElementById('qa-max-loss').value = limits.maxDailyLoss;
+            document.getElementById('qa-max-trades').value = limits.maxTrades;
 
             // Clear other inputs
             document.getElementById('qa-symbol').value = '';
             document.getElementById('qa-pnl').value = '';
 
-            // Update running totals with current limits
+            // Update running totals
+            await updateRunningTotals();
+        }
+
+        async function saveLimitsOnChange() {
+            const maxLoss = parseFloat(document.getElementById('qa-max-loss').value) || 400;
+            const maxTrades = parseInt(document.getElementById('qa-max-trades').value) || 5;
+
+            await saveTodayLimits(maxLoss, maxTrades);
             await updateRunningTotals();
         }
 
@@ -1776,7 +1843,11 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
                 const maxTrades = parseInt(maxTradesInput?.value) || 5;
 
                 // Calculate remaining
-                const remaining = Math.abs(maxLoss) - Math.abs(totalPnL);
+                // maxLoss is positive (e.g., 400 = you can lose up to $400)
+                // totalPnL is positive if gains, negative if losses
+                // If you gain +$100, you have MORE room to lose: 400 + 100 = 500
+                // If you lose -$100, you have LESS room to lose: 400 + (-100) = 300
+                const remaining = Math.abs(maxLoss) + totalPnL;
                 const percentUsed = Math.abs(totalPnL / maxLoss) * 100;
 
                 // Update UI
@@ -1992,7 +2063,7 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
                                id="qa-max-loss"
                                placeholder="400"
                                step="50"
-                               onchange="updateRunningTotals()"
+                               onchange="saveLimitsOnChange()"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none">
                     </div>
                     <div>
@@ -2002,7 +2073,7 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
                                placeholder="5"
                                min="1"
                                max="20"
-                               onchange="updateRunningTotals()"
+                               onchange="saveLimitsOnChange()"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none">
                     </div>
                 </div>

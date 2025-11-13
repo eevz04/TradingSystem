@@ -146,12 +146,23 @@ const StorageManager = {
      * Get trades for today
      */
     async getTodayTrades() {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
 
-        return await this.getTradesByDateRange(today, tomorrow);
+            const allTrades = await this.getTrades();
+            if (!allTrades || !allTrades.trades) return [];
+
+            return allTrades.trades.filter(trade => {
+                const tradeDate = new Date(trade.timestamp);
+                return tradeDate >= today && tradeDate < tomorrow;
+            });
+        } catch (error) {
+            console.error('Error getting today trades:', error);
+            return [];
+        }
     },
 
     /**
