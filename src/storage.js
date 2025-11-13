@@ -153,12 +153,36 @@ const StorageManager = {
             tomorrow.setDate(tomorrow.getDate() + 1);
 
             const allTrades = await this.getTrades();
-            if (!allTrades || !allTrades.trades) return [];
+            if (!allTrades || !allTrades.trades) {
+                console.log('📊 getTodayTrades: No trades found in storage');
+                return [];
+            }
 
-            return allTrades.trades.filter(trade => {
-                const tradeDate = new Date(trade.timestamp);
-                return tradeDate >= today && tradeDate < tomorrow;
+            console.log('📊 getTodayTrades Debug:', {
+                today: today.toISOString(),
+                tomorrow: tomorrow.toISOString(),
+                totalTrades: allTrades.trades.length
             });
+
+            const todayTrades = allTrades.trades.filter(trade => {
+                const tradeDate = new Date(trade.timestamp);
+                const isToday = tradeDate >= today && tradeDate < tomorrow;
+
+                if (!isToday) {
+                    console.log('  ❌ Trade NOT today:', {
+                        orderID: trade.orderID || trade.symbol,
+                        timestamp: trade.timestamp,
+                        tradeDate: tradeDate.toISOString()
+                    });
+                }
+
+                return isToday;
+            });
+
+            console.log('📊 Trades de hoy encontrados:', todayTrades.length);
+
+            return todayTrades;
+
         } catch (error) {
             console.error('Error getting today trades:', error);
             return [];

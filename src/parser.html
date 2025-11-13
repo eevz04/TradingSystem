@@ -1612,40 +1612,81 @@
 
         async function saveTrade(trade) {
             try {
-                // Get existing trades
-                let tradesData = {
-                    version: '1.0',
-                    lastUpdated: new Date().toISOString(),
-                    totalTrades: 0,
-                    trades: []
-                };
+                // Check if this is a Quick Add completion
+                const isQuickAddCompletion = window.currentQuickAddCompletion &&
+                                            window.currentQuickAddCompletion.quickAddID;
 
-                const result = await window.storage.get(CONFIG.storageKeys.trades);
-                if (result && result.value) {
-                    tradesData = JSON.parse(result.value);
-                }
+                if (isQuickAddCompletion) {
+                    // UPDATE existing Quick Add trade
+                    const quickAddID = window.currentQuickAddCompletion.quickAddID;
 
-                // Check for duplicates
-                const isDuplicate = tradesData.trades.some(t =>
-                    t.orderIDs.some(id => trade.orderIDs.includes(id))
-                );
+                    console.log('📝 Updating Quick Add:', quickAddID);
 
-                if (isDuplicate) {
-                    return {
-                        success: false,
-                        error: 'Trade duplicado: Order ID ya existe en el sistema'
+                    // Add completion metadata
+                    trade.isQuickAdd = false;
+                    trade.completedAt = new Date().toISOString();
+                    trade.originalQuickAddTimestamp = window.currentQuickAddCompletion.quickAddTimestamp;
+
+                    // Update the trade using StorageManager
+                    const success = await StorageManager.updateTrade(quickAddID, trade);
+
+                    if (success) {
+                        // Clear the completion flag
+                        window.currentQuickAddCompletion = null;
+
+                        console.log('✅ Quick Add updated successfully');
+
+                        // Refresh pending Quick Adds
+                        await loadPendingQuickAdds();
+
+                        return {
+                            success: true,
+                            message: '✅ Quick Add completado exitosamente!'
+                        };
+                    } else {
+                        return {
+                            success: false,
+                            error: 'Error al actualizar Quick Add'
+                        };
+                    }
+
+                } else {
+                    // NORMAL FLOW: Create new trade
+                    // Get existing trades
+                    let tradesData = {
+                        version: '1.0',
+                        lastUpdated: new Date().toISOString(),
+                        totalTrades: 0,
+                        trades: []
                     };
+
+                    const result = await window.storage.get(CONFIG.storageKeys.trades);
+                    if (result && result.value) {
+                        tradesData = JSON.parse(result.value);
+                    }
+
+                    // Check for duplicates
+                    const isDuplicate = tradesData.trades.some(t =>
+                        t.orderIDs && t.orderIDs.some(id => trade.orderIDs.includes(id))
+                    );
+
+                    if (isDuplicate) {
+                        return {
+                            success: false,
+                            error: 'Trade duplicado: Order ID ya existe en el sistema'
+                        };
+                    }
+
+                    // Add trade
+                    tradesData.trades.push(trade);
+                    tradesData.totalTrades = tradesData.trades.length;
+                    tradesData.lastUpdated = new Date().toISOString();
+
+                    // Save
+                    await window.storage.set(CONFIG.storageKeys.trades, JSON.stringify(tradesData));
+
+                    console.log('✅ Trade saved:', trade);
                 }
-
-                // Add trade
-                tradesData.trades.push(trade);
-                tradesData.totalTrades = tradesData.trades.length;
-                tradesData.lastUpdated = new Date().toISOString();
-
-                // Save
-                await window.storage.set(CONFIG.storageKeys.trades, JSON.stringify(tradesData));
-
-                console.log('✅ Trade saved:', trade);
 
                 return {
                     success: true,
@@ -1981,9 +2022,22 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
                 // Get today's trades
                 const todayTrades = await StorageManager.getTodayTrades();
 
+                console.log('=== Running Totals Debug ===');
+                console.log('Fecha actual:', new Date().toISOString());
+                console.log('Trades de hoy:', todayTrades.length);
+                console.log('Trades:', todayTrades.map(t => ({
+                    symbol: t.symbol,
+                    pnl: t.pnl,
+                    timestamp: t.timestamp,
+                    isQuickAdd: t.isQuickAdd
+                })));
+
                 // Calculate totals
                 const totalPnL = todayTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
                 const tradeCount = todayTrades.length;
+
+                console.log('P&L total HOY:', totalPnL);
+                console.log('Cantidad HOY:', tradeCount);
 
                 // Get limits from INPUTS (editables)
                 const maxLossInput = document.getElementById('qa-max-loss');
@@ -1999,6 +2053,9 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
                 // If you lose -$100, you have LESS room to lose: 400 + (-100) = 300
                 const remaining = Math.abs(maxLoss) + totalPnL;
                 const percentUsed = Math.abs(totalPnL / maxLoss) * 100;
+
+                console.log('Límite restante:', remaining);
+                console.log('=========================');
 
                 // Update UI
                 document.getElementById('qa-total-pnl').textContent = `${totalPnL.toFixed(2)}`;
@@ -2278,6 +2335,7 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
             }
 
             try {
+                // Parse broker data
                 const parsed = parseRawData(brokerData);
 
                 if (!parsed || parsed.length === 0) {
@@ -2287,29 +2345,60 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
 
                 const position = parsed[0];
 
-                const completeTrade = {
-                    orderID: quickAdd.orderID,
+                // Close complete modal
+                closeCompleteModal();
+
+                // Create a trade object for Step 3 (similar to detection result)
+                currentTrade = {
+                    orderID: position.orderID || quickAdd.orderID,
                     symbol: position.symbol,
+                    type: position.type,
                     entry: position.entry,
                     exit: position.exit,
                     volume: position.volume,
                     pnl: position.pnl,
-                    type: position.type,
                     timeBRT: position.timeBRT,
-                    timestamp: quickAdd.timestamp,
-                    isQuickAdd: false,
-                    completedAt: new Date().toISOString()
+                    openHourBRT: position.openHourBRT,
+                    isGrouped: false,
+                    positions: [{
+                        entryPrice: position.entry,
+                        exitPrice: position.exit,
+                        volume: position.volume,
+                        pnl: position.pnl
+                    }]
                 };
 
-                const success = await StorageManager.updateTrade(quickAdd.orderID, completeTrade);
+                // Store Quick Add info for later update
+                window.currentQuickAddCompletion = {
+                    quickAddID: quickAdd.orderID,
+                    quickAddTimestamp: quickAdd.timestamp
+                };
 
-                if (success) {
-                    alert('✅ Quick Add completado!');
-                    closeCompleteModal();
-                    await loadPendingQuickAdds();
-                } else {
-                    alert('❌ Error al guardar');
+                // Update step indicator
+                updateStepIndicator(3);
+
+                // Get next trade number
+                const nextTradeNumber = await getNextTradeNumber();
+
+                // Pre-fill form with parsed data
+                document.getElementById('trade-number').value = nextTradeNumber;
+                document.getElementById('trade-number-hint').textContent = `Sugerido: ${nextTradeNumber} (completando Quick Add)`;
+
+                // Pre-fill Take Profit with exit price
+                if (position.exit) {
+                    document.getElementById('take-profit').value = position.exit.toFixed(2);
                 }
+
+                // Render stop loss inputs
+                renderStopLossInputs();
+
+                // Show step 3
+                document.getElementById('step-1').classList.add('hidden');
+                document.getElementById('step-2').classList.add('hidden');
+                document.getElementById('step-3').classList.remove('hidden');
+                document.getElementById('step-3').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                showMessage('✅ Datos cargados. Por favor completa Stop Loss y otros campos', 'info');
 
             } catch (error) {
                 console.error('Error:', error);
