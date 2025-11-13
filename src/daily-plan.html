@@ -116,6 +116,29 @@
             </div>
         </div>
 
+        <!-- Date Navigation -->
+        <div class="bg-slate-700 rounded-lg p-4 mb-6 flex items-center justify-between shadow-lg no-print">
+            <button onclick="navigateDate(-1)"
+                    class="bg-slate-600 hover:bg-slate-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-all hover:shadow-md">
+                <span class="text-xl">←</span>
+                <span class="font-semibold">Día Anterior</span>
+            </button>
+
+            <div class="text-center">
+                <div id="current-date-display" class="text-2xl font-bold text-white mb-1"></div>
+                <button onclick="goToToday()"
+                        class="text-sm text-blue-300 hover:text-blue-100 underline transition-colors">
+                    🏠 Ir a Hoy
+                </button>
+            </div>
+
+            <button onclick="navigateDate(1)"
+                    class="bg-slate-600 hover:bg-slate-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-all hover:shadow-md">
+                <span class="font-semibold">Día Siguiente</span>
+                <span class="text-xl">→</span>
+            </button>
+        </div>
+
         <!-- Status Message (hidden by default) -->
         <div id="status-message" class="hidden status-message mx-8 mt-4 px-4 py-3 rounded-lg text-sm font-medium">
             <!-- Content injected via JS -->
@@ -748,11 +771,14 @@
             // Set current date
             setCurrentDate();
 
+            // Initialize date navigation display
+            updateDateDisplay();
+
             // Initialize setups
             initializeSetups();
 
-            // Load today's plan if exists
-            await loadTodayPlan();
+            // Load plan for current date
+            await loadPlanForDate(currentDate);
 
             // Setup form validation
             setupFormValidation();
@@ -760,7 +786,7 @@
             // Load quick control (if needed in future)
             // loadQuickControl();
 
-            console.log('✅ Daily Plan initialized');
+            console.log('✅ Daily Plan initialized with date navigation');
         });
 
         // ==========================================
@@ -813,14 +839,19 @@
             }
 
             try {
-                const plan = buildPlanObject();
+                // Use currentDate to build the plan
+                const plan = buildPlanObjectForDate(currentDate);
+                const dateKey = formatDateForStorage(currentDate);
 
-                // Save to window.storage (today)
-                await window.storage.set(CONFIG.storageKey, JSON.stringify(plan));
-
-                // Save to history (with date)
-                const historyKey = `daily-plan-${plan.date}`;
+                // Save with date-specific key
+                const historyKey = `daily-plan-${dateKey}`;
                 await window.storage.set(historyKey, JSON.stringify(plan));
+
+                // Also update current pointer if saving today
+                const today = new Date();
+                if (isSameDay(currentDate, today)) {
+                    await window.storage.set(CONFIG.storageKey, JSON.stringify(plan));
+                }
 
                 showMessage('✅ Plan saved successfully!', 'success');
 
@@ -1168,6 +1199,251 @@
             // Threshold (80%)
             const threshold = maxLoss && maxLoss !== '___' ? (parseFloat(maxLoss) * 0.8).toFixed(2) : '___';
             document.getElementById('qc-threshold').textContent = `$${threshold}`;
+        }
+
+        // ==========================================
+        // DATE NAVIGATION SYSTEM
+        // ==========================================
+
+        let currentDate = new Date();
+
+        /**
+         * Update the date display in the navigation bar
+         */
+        function updateDateDisplay() {
+            const dateStr = currentDate.toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            // Capitalize first letter
+            const capitalizedDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+            document.getElementById('current-date-display').textContent = capitalizedDate;
+
+            // Update page title
+            document.title = `Daily Plan - ${capitalizedDate}`;
+        }
+
+        /**
+         * Navigate to previous/next day
+         * @param {number} days - Number of days to move (-1 for previous, +1 for next)
+         */
+        async function navigateDate(days) {
+            // Save current plan before navigating
+            const saved = await saveCurrentPlan();
+
+            if (!saved) {
+                if (!confirm('El plan actual no se guardó. ¿Continuar sin guardar?')) {
+                    return;
+                }
+            }
+
+            // Navigate to new date
+            currentDate.setDate(currentDate.getDate() + days);
+
+            // Update display
+            updateDateDisplay();
+
+            // Load plan for new date
+            await loadPlanForDate(currentDate);
+        }
+
+        /**
+         * Jump to today's date
+         */
+        async function goToToday() {
+            const today = new Date();
+            const isAlreadyToday =
+                currentDate.getDate() === today.getDate() &&
+                currentDate.getMonth() === today.getMonth() &&
+                currentDate.getFullYear() === today.getFullYear();
+
+            if (isAlreadyToday) {
+                showMessage('Ya estás en el día de hoy', 'info');
+                return;
+            }
+
+            // Save current plan before jumping
+            const saved = await saveCurrentPlan();
+
+            if (!saved) {
+                if (!confirm('El plan actual no se guardó. ¿Continuar sin guardar?')) {
+                    return;
+                }
+            }
+
+            currentDate = new Date();
+            updateDateDisplay();
+            await loadPlanForDate(currentDate);
+        }
+
+        /**
+         * Save current plan without confirmation
+         */
+        async function saveCurrentPlan() {
+            try {
+                const form = document.getElementById('daily-plan-form');
+
+                // Check if form has any content
+                const hasContent = setups.some(setup => setup.symbol || setup.context) ||
+                                   form.aSetup.value ||
+                                   form.maxDailyLoss.value;
+
+                if (!hasContent) {
+                    return true; // Nothing to save
+                }
+
+                // Validate required fields
+                if (!form.checkValidity()) {
+                    return false;
+                }
+
+                // Validate at least one complete setup
+                const hasCompleteSetup = setups.some(setup =>
+                    setup.symbol && setup.context && setup.entry && setup.invalidation && setup.management
+                );
+
+                if (!hasCompleteSetup) {
+                    return false;
+                }
+
+                const plan = buildPlanObjectForDate(currentDate);
+                const dateKey = formatDateForStorage(currentDate);
+
+                // Save with date-specific key
+                await window.storage.set(`daily-plan-${dateKey}`, JSON.stringify(plan));
+
+                // Also update current pointer if saving today
+                const today = new Date();
+                if (isSameDay(currentDate, today)) {
+                    await window.storage.set(CONFIG.storageKey, JSON.stringify(plan));
+                }
+
+                console.log('Plan saved for date:', dateKey);
+                return true;
+
+            } catch (error) {
+                console.error('Error saving plan:', error);
+                return false;
+            }
+        }
+
+        /**
+         * Load plan for a specific date
+         * @param {Date} date - The date to load
+         */
+        async function loadPlanForDate(date) {
+            try {
+                showMessage('Cargando plan...', 'info');
+
+                const dateKey = formatDateForStorage(date);
+                const result = await window.storage.get(`daily-plan-${dateKey}`);
+
+                if (result && result.value) {
+                    // Load existing plan
+                    const plan = JSON.parse(result.value);
+                    fillFormWithPlan(plan);
+                    showMessage('Plan cargado correctamente', 'success');
+                } else {
+                    // New plan for this date
+                    clearFormForNewDate();
+                    showMessage('Nuevo plan para esta fecha', 'info');
+                }
+            } catch (error) {
+                console.error('Error loading plan:', error);
+                showMessage('Error al cargar el plan', 'error');
+            }
+        }
+
+        /**
+         * Build plan object for a specific date
+         */
+        function buildPlanObjectForDate(date) {
+            const form = document.getElementById('daily-plan-form');
+            const formData = new FormData(form);
+            const dateKey = formatDateForStorage(date);
+
+            return {
+                version: '2.0',
+                date: dateKey,
+                timestamp: new Date().toISOString(),
+
+                // Pre-Market Analysis
+                marketRegime: formData.get('marketRegime'),
+                events: formData.getAll('events'),
+                primaryContext: formData.get('primaryContext'),
+                secondaryContext: formData.get('secondaryContext'),
+                expectedVolatility: formData.get('expectedVolatility'),
+
+                // Trading Plan
+                aSetup: formData.get('aSetup'),
+                levels: {
+                    resistance2: formData.get('resistance2') || null,
+                    resistance1: formData.get('resistance1') || null,
+                    pivot: formData.get('pivot') || null,
+                    support1: formData.get('support1') || null,
+                    support2: formData.get('support2') || null,
+                    vwapPoc: formData.get('vwapPoc') || null
+                },
+                whatNotDo: formData.get('whatNotDo'),
+                mentalState: formData.get('mentalState'),
+
+                // Risk Management
+                maxDailyLoss: formData.get('maxDailyLoss'),
+                maxPositionSize: formData.get('maxPositionSize'),
+                maxTrades: formData.get('maxTrades'),
+                profitTarget: formData.get('profitTarget'),
+                rPerTrade: formData.get('rPerTrade'),
+                circuitBreakers: {
+                    twoLosses: formData.get('circuitBreaker1') === 'on',
+                    threeLosses: formData.get('circuitBreaker2') === 'on',
+                    maxHit: formData.get('circuitBreaker3') === 'on'
+                },
+                timeRestrictions: formData.getAll('timeRestriction'),
+
+                // Setups
+                setups: setups.map(setup => ({
+                    id: setup.id,
+                    symbol: setup.symbol,
+                    context: setup.context,
+                    entry: setup.entry,
+                    invalidation: setup.invalidation,
+                    management: setup.management
+                }))
+            };
+        }
+
+        /**
+         * Clear the plan form for a new date
+         */
+        function clearFormForNewDate() {
+            const form = document.getElementById('daily-plan-form');
+            form.reset();
+
+            // Reset setups
+            setups = [];
+            initializeSetups();
+        }
+
+        /**
+         * Format date as YYYY-MM-DD for storage
+         */
+        function formatDateForStorage(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        /**
+         * Check if two dates are the same day
+         */
+        function isSameDay(date1, date2) {
+            return date1.getFullYear() === date2.getFullYear() &&
+                   date1.getMonth() === date2.getMonth() &&
+                   date1.getDate() === date2.getDate();
         }
 
         // ==========================================
