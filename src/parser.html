@@ -1,3 +1,33 @@
+<!--
+    PARSER DE TRADES - Sistema de Registro y Análisis de Operaciones
+    
+    Este parser permite procesar y registrar operaciones de trading de manera estructurada.
+    Funcionalidades principales:
+    
+    1. DETECCIÓN DE TRADES: Parsea datos en bruto de la plataforma (formato Funding) y detecta
+       automáticamente las operaciones, agrupando posiciones relacionadas cuando es necesario.
+    
+    2. COMPLETADO DE DATOS: Permite completar información adicional del trade como:
+       - Número de trade, bloque
+       - Stop Loss y Take Profit
+       - Riesgo planeado vs ejecutado
+       - Setup utilizado (Item)
+       - Observaciones y cumplimiento del plan diario
+    
+    3. CÁLCULOS AUTOMÁTICOS: Calcula métricas importantes como:
+       - Riesgo ejecutado (basado en stop loss y volumen)
+       - Desviación del riesgo planeado
+       - Valores R (R planeado y R ejecutado)
+    
+    4. GUARDADO Y EXPORTACIÓN: Guarda los trades en storage y genera:
+       - Plantilla para Telegram
+       - Línea CSV para exportación
+    
+    5. QUICK ADD: Permite registro rápido de trades durante el mercado (solo symbol y P&L)
+       para completar después con todos los detalles.
+    
+    El sistema valida contra el plan diario y previene duplicados basándose en Order IDs.
+-->
 <!DOCTYPE html>
 <html lang="es">
 
