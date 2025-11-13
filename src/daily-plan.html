@@ -75,15 +75,6 @@
             display: none !important;
         }
 
-        /* Print Mode: Quick Control */
-        body.printing-quick-control > *:not(#quickControlContent) {
-            display: none !important;
-        }
-
-        body.printing-quick-control #quickControlContent {
-            display: block !important;
-        }
-
         /* General print rules */
         @media print {
             .no-print {
@@ -103,6 +94,15 @@
                 background: white !important;
                 padding: 0;
                 margin: 0;
+            }
+
+            /* Print Mode: Quick Control */
+            body.printing-quick-control > *:not(#quickControlContent) {
+                display: none !important;
+            }
+
+            body.printing-quick-control #quickControlContent {
+                display: block !important;
             }
 
             /* Cuando NO hay clase especial, imprimir todo normalmente */
