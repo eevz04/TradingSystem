@@ -26,72 +26,6 @@
     </script>
 
     <style>
-        /* Hide quick control on screen, show on print */
-        .screen-hidden {
-            display: none;
-        }
-
-        /* Custom styles for print */
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-
-            /* Hide everything except quick control when printing */
-            body > div > div:not(.print-only),
-            form,
-            nav,
-            header,
-            .bg-navy-dark {
-                display: none !important;
-            }
-
-            /* Show only quick control section */
-            .print-only {
-                display: block !important;
-            }
-
-            body {
-                padding: 0;
-                margin: 0;
-                background: white;
-            }
-
-            .container {
-                max-width: 100%;
-                box-shadow: none;
-            }
-
-            .page-break {
-                page-break-before: always;
-            }
-
-            /* Print-friendly colors */
-            .bg-red-50 {
-                background: white !important;
-                border-color: black !important;
-            }
-
-            .bg-blue-50 {
-                background: white !important;
-                border-color: black !important;
-            }
-
-            .bg-slate-100 {
-                background: white !important;
-                border-color: black !important;
-            }
-
-            /* Ensure text is black for printing */
-            .text-red-700,
-            .text-orange-700,
-            .text-blue-900,
-            .text-slate-700,
-            .text-slate-800 {
-                color: black !important;
-            }
-        }
-
         /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
@@ -117,7 +51,6 @@
                 opacity: 0;
                 transform: translateY(-10px);
             }
-
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -128,11 +61,21 @@
             animation: slideDown 0.3s ease-out;
         }
 
-        /* Print modes */
+        /* Quick Control hidden by default */
+        #quickControlContent {
+            display: none;
+        }
+
+        /* Print Mode: Full Plan */
         body.printing-full-plan #quickControlContent {
             display: none !important;
         }
 
+        body.printing-full-plan #printModal {
+            display: none !important;
+        }
+
+        /* Print Mode: Quick Control */
         body.printing-quick-control > *:not(#quickControlContent) {
             display: none !important;
         }
@@ -141,10 +84,7 @@
             display: block !important;
         }
 
-        .print-quick-control {
-            display: none;
-        }
-
+        /* General print rules */
         @media print {
             .no-print {
                 display: none !important;
@@ -160,7 +100,14 @@
             }
 
             body {
-                background: white;
+                background: white !important;
+                padding: 0;
+                margin: 0;
+            }
+
+            /* Cuando NO hay clase especial, imprimir todo normalmente */
+            body:not(.printing-quick-control) #quickControlContent {
+                display: none !important;
             }
         }
     </style>
@@ -1325,7 +1272,7 @@
     </div>
 
     <!-- Quick Control Print Layout -->
-    <div id="quickControlContent" class="hidden print-quick-control">
+    <div id="quickControlContent">
         <div style="padding: 2rem; max-width: 42rem; margin: 0 auto;">
             <div style="border: 4px solid #000; border-radius: 0.5rem; padding: 1.5rem;">
 
