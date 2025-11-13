@@ -146,30 +146,10 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-            <!-- ============================================ -->
-            <!-- SIDEBAR: Daily Plan Summary -->
-            <!-- ============================================ -->
-            <aside class="lg:col-span-1">
-                <div class="bg-white rounded-lg shadow-lg border border-slate-200 sticky top-6">
-                    <div class="bg-blue-primary text-white px-4 py-3 rounded-t-lg">
-                        <h2 class="font-semibold text-sm uppercase tracking-wide">📋 Tu Plan de Hoy</h2>
-                    </div>
-
-                    <div class="p-4 space-y-4" id="plan-summary">
-                        <!-- Loaded via JS -->
-                        <div class="text-center py-8 text-slate-400 text-sm">
-                            <p>Cargando plan...</p>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- ============================================ -->
-            <!-- MAIN CONTENT: Parser Steps -->
-            <!-- ============================================ -->
-            <main class="lg:col-span-3 space-y-6">
+        <!-- ============================================ -->
+        <!-- MAIN CONTENT: Parser Steps -->
+        <!-- ============================================ -->
+        <div class="space-y-6">
 
                 <!-- Step Indicator -->
                 <div class="bg-white rounded-lg shadow-lg border border-slate-200 p-6">
@@ -462,7 +442,6 @@
                     </div>
                 </section>
 
-            </main>
         </div>
     </div>
 
@@ -1742,9 +1721,12 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
                 const totalPnL = todayTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
                 const tradeCount = todayTrades.length;
 
-                // Get limits from daily plan
-                const maxLoss = dailyPlan?.maxDailyLoss || 400;
-                const maxTrades = dailyPlan?.maxTrades || 5;
+                // Get limits from daily plan (check multiple possible structures)
+                const maxLoss = dailyPlan?.riskManagement?.maxDailyLoss || dailyPlan?.maxDailyLoss || 400;
+                const maxTrades = dailyPlan?.riskManagement?.maxTrades || dailyPlan?.maxTrades || 5;
+
+                console.log('Max Loss:', maxLoss, 'Max Trades:', maxTrades);
+                console.log('Daily Plan Structure:', dailyPlan);
 
                 // Calculate remaining
                 const remaining = maxLoss + totalPnL; // maxLoss is negative
