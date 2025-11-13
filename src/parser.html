@@ -2136,10 +2136,26 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
             }
         }
 
-        function completeQuickAdd(orderID) {
-            // TODO: Implementar en siguiente fase
-            // Abrirá el parser normal con datos pre-cargados
-            alert('Función "Completar" se implementará cuando agreguemos Import Journal');
+        /**
+         * Open modal to complete a Quick Add with broker data
+         */
+        async function completeQuickAdd(orderID) {
+            try {
+                const allTrades = await StorageManager.getTrades();
+                const quickAdd = allTrades.trades.find(t => t.orderID === orderID);
+
+                if (!quickAdd) {
+                    alert('❌ Quick Add no encontrado');
+                    return;
+                }
+
+                window.currentQuickAdd = quickAdd;
+                showCompleteModal(quickAdd);
+
+            } catch (error) {
+                console.error('Error loading Quick Add:', error);
+                alert('❌ Error al cargar Quick Add');
+            }
         }
 
         async function deleteQuickAdd(orderID) {
@@ -2151,8 +2167,370 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
             }
         }
 
-        function completeAllQuickAdds() {
-            alert('Función "Completar Todos" se implementará con Import Journal');
+        // ==========================================
+        // COMPLETE QUICK ADD FUNCTIONS
+        // ==========================================
+
+        function showCompleteModal(quickAdd) {
+            document.getElementById('complete-symbol').textContent = quickAdd.symbol;
+
+            const pnlElem = document.getElementById('complete-pnl');
+            pnlElem.textContent = `${quickAdd.pnl >= 0 ? '+' : ''}${quickAdd.pnl.toFixed(2)}`;
+            pnlElem.className = `text-xl font-bold ${quickAdd.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`;
+
+            const timestamp = new Date(quickAdd.timestamp);
+            document.getElementById('complete-time').textContent = timestamp.toLocaleString('es-ES');
+
+            document.getElementById('complete-broker-data').value = '';
+            document.getElementById('parse-preview').classList.add('hidden');
+            document.getElementById('complete-validation').classList.add('hidden');
+
+            document.getElementById('completeModal').classList.remove('hidden');
+        }
+
+        function closeCompleteModal() {
+            document.getElementById('completeModal').classList.add('hidden');
+            window.currentQuickAdd = null;
+        }
+
+        function previewComplete() {
+            const brokerData = document.getElementById('complete-broker-data').value.trim();
+
+            if (!brokerData) {
+                alert('Por favor pega los datos del broker');
+                return;
+            }
+
+            try {
+                const lines = brokerData.split('\n').filter(l => l.trim());
+                const parsed = parseRawData(brokerData);
+
+                if (!parsed || parsed.length === 0) {
+                    alert('❌ No se pudo procesar los datos');
+                    return;
+                }
+
+                // Get the first parsed position
+                const position = parsed[0];
+
+                const previewDiv = document.getElementById('parse-preview');
+                const previewContent = document.getElementById('parse-preview-content');
+
+                previewContent.innerHTML = `
+<strong>Symbol:</strong> ${position.symbol}<br>
+<strong>Type:</strong> ${position.type}<br>
+<strong>Entry:</strong> ${position.entry}<br>
+<strong>Exit:</strong> ${position.exit}<br>
+<strong>Volume:</strong> ${position.volume}<br>
+<strong>P&L:</strong> ${position.pnl.toFixed(2)}
+                `;
+
+                previewDiv.classList.remove('hidden');
+
+                validateComplete(position);
+
+            } catch (error) {
+                console.error('Error parsing:', error);
+                alert('❌ Error al procesar: ' + error.message);
+            }
+        }
+
+        function validateComplete(parsed) {
+            const quickAdd = window.currentQuickAdd;
+            const validationDiv = document.getElementById('complete-validation');
+
+            const warnings = [];
+
+            if (parsed.symbol.toUpperCase() !== quickAdd.symbol.toUpperCase()) {
+                warnings.push(`⚠️ Symbol diferente: QA=${quickAdd.symbol}, Parsed=${parsed.symbol}`);
+            }
+
+            const pnlDiff = Math.abs(parsed.pnl - quickAdd.pnl);
+            if (pnlDiff > 1) {
+                warnings.push(`⚠️ P&L diferente: QA=${quickAdd.pnl.toFixed(2)}, Parsed=${parsed.pnl.toFixed(2)} (diff: ${pnlDiff.toFixed(2)})`);
+            }
+
+            if (warnings.length > 0) {
+                validationDiv.innerHTML = `
+                    <div class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4">
+                        <h5 class="font-bold text-yellow-800 mb-2">⚠️ Validación:</h5>
+                        ${warnings.map(w => `<div class="text-sm text-yellow-700">${w}</div>`).join('')}
+                        <div class="text-sm text-gray-600 mt-2">Puedes continuar si los datos son correctos</div>
+                    </div>
+                `;
+            } else {
+                validationDiv.innerHTML = `
+                    <div class="bg-green-50 border-2 border-green-400 rounded-lg p-4">
+                        <div class="text-green-700 font-bold">✅ Validación exitosa</div>
+                    </div>
+                `;
+            }
+            validationDiv.classList.remove('hidden');
+        }
+
+        async function executeComplete() {
+            const brokerData = document.getElementById('complete-broker-data').value.trim();
+            const quickAdd = window.currentQuickAdd;
+
+            if (!brokerData || !quickAdd) {
+                alert('Datos incompletos');
+                return;
+            }
+
+            try {
+                const parsed = parseRawData(brokerData);
+
+                if (!parsed || parsed.length === 0) {
+                    alert('❌ No se pudo procesar los datos');
+                    return;
+                }
+
+                const position = parsed[0];
+
+                const completeTrade = {
+                    orderID: quickAdd.orderID,
+                    symbol: position.symbol,
+                    entry: position.entry,
+                    exit: position.exit,
+                    volume: position.volume,
+                    pnl: position.pnl,
+                    type: position.type,
+                    timeBRT: position.timeBRT,
+                    timestamp: quickAdd.timestamp,
+                    isQuickAdd: false,
+                    completedAt: new Date().toISOString()
+                };
+
+                const success = await StorageManager.updateTrade(quickAdd.orderID, completeTrade);
+
+                if (success) {
+                    alert('✅ Quick Add completado!');
+                    closeCompleteModal();
+                    await loadPendingQuickAdds();
+                } else {
+                    alert('❌ Error al guardar');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // ==========================================
+        // COMPLETE ALL QUICK ADDS
+        // ==========================================
+
+        let matchedTrades = [];
+
+        async function completeAllQuickAdds() {
+            try {
+                const todayTrades = await StorageManager.getTodayTrades();
+                const quickAdds = todayTrades.filter(t => t.isQuickAdd === true);
+
+                if (quickAdds.length === 0) {
+                    alert('No hay Quick Adds pendientes');
+                    return;
+                }
+
+                showCompleteAllModal(quickAdds);
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error al cargar Quick Adds');
+            }
+        }
+
+        function showCompleteAllModal(quickAdds) {
+            const listDiv = document.getElementById('complete-all-list');
+            listDiv.innerHTML = quickAdds.map(qa => `
+                <div class="flex items-center justify-between bg-white p-3 rounded border border-blue-200">
+                    <span class="font-bold">${qa.symbol}</span>
+                    <span class="${qa.pnl >= 0 ? 'text-green-600' : 'text-red-600'} font-bold">${qa.pnl >= 0 ? '+' : ''}${qa.pnl.toFixed(2)}</span>
+                    <span class="text-sm text-gray-600">${new Date(qa.timestamp).toLocaleTimeString('es-ES')}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('complete-all-data').value = '';
+            document.getElementById('match-results').classList.add('hidden');
+            matchedTrades = [];
+
+            document.getElementById('completeAllModal').classList.remove('hidden');
+        }
+
+        function closeCompleteAllModal() {
+            document.getElementById('completeAllModal').classList.add('hidden');
+            matchedTrades = [];
+        }
+
+        async function previewCompleteAll() {
+            const journalData = document.getElementById('complete-all-data').value.trim();
+
+            if (!journalData) {
+                alert('Por favor pega el journal');
+                return;
+            }
+
+            try {
+                const todayTrades = await StorageManager.getTodayTrades();
+                const quickAdds = todayTrades.filter(t => t.isQuickAdd === true);
+
+                // Parse journal lines - cada 2 líneas forman un trade completo
+                const lines = journalData.split('\n').filter(line => line.trim());
+                const parsedTrades = [];
+
+                for (let i = 0; i < lines.length; i += 2) {
+                    if (i + 1 < lines.length) {
+                        const tradePair = [lines[i], lines[i + 1]].join('\n');
+                        try {
+                            const parsed = parseRawData(tradePair);
+                            if (parsed && parsed.length > 0) {
+                                parsedTrades.push(parsed[0]);
+                            }
+                        } catch (e) {
+                            console.warn('Error parsing pair:', e);
+                        }
+                    }
+                }
+
+                // Match Quick Adds con parsed trades
+                matchedTrades = [];
+                const unmatched = [];
+
+                for (const qa of quickAdds) {
+                    let bestMatch = null;
+                    let bestScore = 0;
+
+                    for (const parsed of parsedTrades) {
+                        let score = 0;
+
+                        if (parsed.symbol.toUpperCase() === qa.symbol.toUpperCase()) {
+                            score += 100;
+                        }
+
+                        const pnlDiff = Math.abs(parsed.pnl - qa.pnl);
+                        const pnlSimilarity = 1 - (pnlDiff / Math.max(Math.abs(qa.pnl), 1));
+                        score += pnlSimilarity * 50;
+
+                        if (score > bestScore && !parsed.matched) {
+                            bestScore = score;
+                            bestMatch = parsed;
+                        }
+                    }
+
+                    if (bestMatch && bestScore > 80) {
+                        bestMatch.matched = true;
+                        matchedTrades.push({
+                            quickAdd: qa,
+                            parsed: bestMatch,
+                            score: bestScore
+                        });
+                    } else {
+                        unmatched.push(qa);
+                    }
+                }
+
+                displayMatchResults(matchedTrades, unmatched);
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        function displayMatchResults(matches, unmatched) {
+            const resultsDiv = document.getElementById('match-results');
+
+            let html = '<div class="space-y-4">';
+
+            if (matches.length > 0) {
+                html += `
+                    <div class="bg-green-50 border-2 border-green-400 rounded-lg p-4">
+                        <h5 class="font-bold text-green-800 mb-3">✅ Matches (${matches.length}):</h5>
+                        <div class="space-y-2">
+                `;
+
+                matches.forEach(m => {
+                    html += `
+                        <div class="bg-white p-3 rounded border border-green-300">
+                            <div class="flex justify-between">
+                                <span class="font-bold">${m.quickAdd.symbol}</span>
+                                <span class="text-sm">Score: ${m.score.toFixed(0)}%</span>
+                            </div>
+                            <div class="text-sm text-gray-600">
+                                QA: ${m.quickAdd.pnl.toFixed(2)} → Parsed: ${m.parsed.pnl.toFixed(2)}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+            }
+
+            if (unmatched.length > 0) {
+                html += `
+                    <div class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4">
+                        <h5 class="font-bold text-yellow-800 mb-3">⚠️ Sin Match (${unmatched.length}):</h5>
+                        <div class="space-y-2">
+                `;
+
+                unmatched.forEach(qa => {
+                    html += `
+                        <div class="bg-white p-3 rounded text-sm">
+                            ${qa.symbol} - ${qa.pnl >= 0 ? '+' : ''}${qa.pnl.toFixed(2)}
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+            }
+
+            html += '</div>';
+
+            resultsDiv.innerHTML = html;
+            resultsDiv.classList.remove('hidden');
+        }
+
+        async function executeCompleteAll() {
+            if (matchedTrades.length === 0) {
+                alert('Primero detecta los matches');
+                return;
+            }
+
+            if (!confirm(`¿Completar ${matchedTrades.length} Quick Adds?`)) {
+                return;
+            }
+
+            try {
+                let completed = 0;
+
+                for (const match of matchedTrades) {
+                    const completeTrade = {
+                        orderID: match.quickAdd.orderID,
+                        symbol: match.parsed.symbol,
+                        entry: match.parsed.entry,
+                        exit: match.parsed.exit,
+                        volume: match.parsed.volume,
+                        pnl: match.parsed.pnl,
+                        type: match.parsed.type,
+                        timeBRT: match.parsed.timeBRT,
+                        timestamp: match.quickAdd.timestamp,
+                        isQuickAdd: false,
+                        completedAt: new Date().toISOString()
+                    };
+
+                    const success = await StorageManager.updateTrade(match.quickAdd.orderID, completeTrade);
+                    if (success) completed++;
+                }
+
+                alert(`✅ Completados: ${completed}/${matchedTrades.length}`);
+                closeCompleteAllModal();
+                await loadPendingQuickAdds();
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error: ' + error.message);
+            }
         }
 
         // ==========================================
@@ -2259,6 +2637,144 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
                     💾 Guardar
                 </button>
                 <button onclick="closeQuickAddModal()"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-bold transition-all">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Complete Quick Add Modal -->
+    <div id="completeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6">✏️ Completar Quick Add</h3>
+
+            <!-- Quick Add Info -->
+            <div class="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-6">
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <div class="text-sm text-gray-600">Symbol</div>
+                        <div id="complete-symbol" class="text-xl font-bold text-gray-800"></div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-600">P&L Original</div>
+                        <div id="complete-pnl" class="text-xl font-bold"></div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-600">Timestamp</div>
+                        <div id="complete-time" class="text-sm text-gray-600"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                <p class="text-sm text-gray-700">
+                    📋 <strong>Instrucciones:</strong> Pega las líneas del broker para este trade.
+                    El sistema detectará automáticamente el formato (tabla o texto) y agrupará las posiciones.
+                </p>
+            </div>
+
+            <!-- Textarea for broker data -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Datos del Broker
+                </label>
+                <textarea id="complete-broker-data"
+                          rows="8"
+                          placeholder="Pega aquí las 2 líneas del trade (Opening + Closing):
+
+ETHUSD  04/11/25 00.34  329850645  Buy   Opening  3.80  3,643.15  -0.08
+ETHUSD  04/11/25 00.36  329851941  Sell  Closing  3.80  3,643.13  -0.08"
+                          class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none font-mono text-sm">
+                </textarea>
+            </div>
+
+            <!-- Parse result preview -->
+            <div id="parse-preview" class="hidden mb-6">
+                <h4 class="font-bold text-gray-800 mb-3">📊 Preview:</h4>
+                <div id="parse-preview-content" class="bg-gray-50 border border-gray-300 rounded-lg p-4 text-sm">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Validation alerts -->
+            <div id="complete-validation" class="hidden mb-6">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex gap-3">
+                <button onclick="previewComplete()"
+                        class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-bold transition-all">
+                    👁️ Preview
+                </button>
+                <button onclick="executeComplete()"
+                        class="flex-1 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-bold transition-all">
+                    ✅ Completar Trade
+                </button>
+                <button onclick="closeCompleteModal()"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-bold transition-all">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Complete All Quick Adds Modal -->
+    <div id="completeAllModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6">📋 Completar Todos los Quick Adds</h3>
+
+            <!-- Quick Adds List -->
+            <div class="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-6">
+                <h4 class="font-bold text-blue-900 mb-3">Quick Adds Pendientes:</h4>
+                <div id="complete-all-list" class="space-y-2">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                <p class="text-sm text-gray-700">
+                    📋 <strong>Instrucciones:</strong> Pega TODAS las líneas del journal del broker.
+                    El sistema automáticamente hará match con cada Quick Add por símbolo y P&L.
+                </p>
+            </div>
+
+            <!-- Textarea -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Journal Completo del Broker
+                </label>
+                <textarea id="complete-all-data"
+                          rows="12"
+                          placeholder="Pega aquí TODAS las líneas de trades del día...
+
+ETHUSD  04/11/25 00.34  329850645  Buy   Opening  3.80  3,643.15  -0.08
+ETHUSD  04/11/25 00.36  329851941  Sell  Closing  3.80  3,643.13  -0.08
+BTCUSD  03/11/25 23.27  329807962  Buy   Opening  0.251  107,161.4  -111.40
+BTCUSD  03/11/25 23.42  329815611  Sell  Closing  0.251  106,717.6  -111.40"
+                          class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none font-mono text-sm">
+                </textarea>
+            </div>
+
+            <!-- Match results -->
+            <div id="match-results" class="hidden mb-6">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex gap-3">
+                <button onclick="previewCompleteAll()"
+                        class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-bold transition-all">
+                    🔍 Detectar Matches
+                </button>
+                <button onclick="executeCompleteAll()"
+                        class="flex-1 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-bold transition-all">
+                    ✅ Completar Todos
+                </button>
+                <button onclick="closeCompleteAllModal()"
                         class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-bold transition-all">
                     Cancelar
                 </button>
