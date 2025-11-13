@@ -119,6 +119,33 @@
     <!-- Main Container -->
     <div class="max-w-7xl mx-auto p-4 py-6">
 
+        <!-- Quick Add Button (Prominent) -->
+        <div class="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg shadow-xl mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-white mb-2">⚡ Quick Add Trade</h2>
+                    <p class="text-white/90 text-sm">Registro rápido durante el mercado (5 segundos)</p>
+                </div>
+                <button onclick="openQuickAddModal()"
+                        class="bg-white text-green-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-green-50 transition-all shadow-lg">
+                    ⚡ Add Quick
+                </button>
+            </div>
+        </div>
+
+        <!-- Quick Adds Pendientes -->
+        <div id="quickAddsPending" class="hidden bg-yellow-50 border-2 border-yellow-400 rounded-lg p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-yellow-900">📝 Quick Adds Pendientes (<span id="qa-pending-count">0</span>)</h3>
+                <button onclick="completeAllQuickAdds()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-bold">
+                    Completar Todos
+                </button>
+            </div>
+            <div id="qa-pending-list" class="space-y-3">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
             <!-- ============================================ -->
@@ -443,6 +470,18 @@
     <!-- JAVASCRIPT -->
     <!-- ============================================ -->
     <script>
+        // ==========================================
+        // IMPORT STORAGE MANAGER
+        // ==========================================
+        // Import Storage Manager
+        const script = document.createElement('script');
+        script.src = './storage.js';
+        script.onload = () => {
+            console.log('Storage Manager loaded');
+            initializeQuickAdd();
+        };
+        document.head.appendChild(script);
+
         // ==========================================
         // CONFIGURATION
         // ==========================================
@@ -1664,6 +1703,191 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
         }
 
         // ==========================================
+        // QUICK ADD FUNCTIONS
+        // ==========================================
+
+        async function initializeQuickAdd() {
+            // Initialize Storage Manager
+            await StorageManager.init();
+
+            // Load today's daily plan
+            dailyPlan = await StorageManager.getTodayDailyPlan();
+
+            // Load pending quick adds
+            await loadPendingQuickAdds();
+        }
+
+        async function openQuickAddModal() {
+            // Show modal
+            document.getElementById('quickAddModal').classList.remove('hidden');
+
+            // Update running totals
+            await updateRunningTotals();
+
+            // Clear inputs
+            document.getElementById('qa-symbol').value = '';
+            document.getElementById('qa-pnl').value = '';
+        }
+
+        function closeQuickAddModal() {
+            document.getElementById('quickAddModal').classList.add('hidden');
+        }
+
+        async function updateRunningTotals() {
+            try {
+                // Get today's trades
+                const todayTrades = await StorageManager.getTodayTrades();
+
+                // Calculate totals
+                const totalPnL = todayTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+                const tradeCount = todayTrades.length;
+
+                // Get limits from daily plan
+                const maxLoss = dailyPlan?.maxDailyLoss || 400;
+                const maxTrades = dailyPlan?.maxTrades || 5;
+
+                // Calculate remaining
+                const remaining = maxLoss + totalPnL; // maxLoss is negative
+                const percentUsed = Math.abs(totalPnL / maxLoss) * 100;
+
+                // Update UI
+                document.getElementById('qa-total-pnl').textContent = `${totalPnL.toFixed(2)}`;
+                document.getElementById('qa-total-pnl').className = totalPnL >= 0 ? 'font-bold text-green-600' : 'font-bold text-red-600';
+
+                document.getElementById('qa-trade-count').textContent = `${tradeCount} / ${maxTrades}`;
+                document.getElementById('qa-remaining').textContent = `${remaining.toFixed(2)}`;
+
+                // Show warning if > 80%
+                const warningDiv = document.getElementById('qa-warning');
+                if (percentUsed >= 80) {
+                    warningDiv.classList.remove('hidden');
+                    warningDiv.textContent = `⚠️ Has usado ${percentUsed.toFixed(0)}% de tu límite diario`;
+                } else {
+                    warningDiv.classList.add('hidden');
+                }
+
+            } catch (error) {
+                console.error('Error updating running totals:', error);
+            }
+        }
+
+        async function saveQuickAdd() {
+            const symbol = document.getElementById('qa-symbol').value;
+            const pnl = parseFloat(document.getElementById('qa-pnl').value);
+
+            // Validation
+            if (!symbol) {
+                alert('Por favor selecciona un symbol');
+                return;
+            }
+
+            if (isNaN(pnl) || pnl === 0) {
+                alert('Por favor ingresa un P&L válido');
+                return;
+            }
+
+            try {
+                // Create quick add trade
+                const quickTrade = {
+                    orderID: `QA-${Date.now()}`,
+                    symbol: symbol,
+                    pnl: pnl,
+                    timestamp: new Date().toISOString(),
+                    isQuickAdd: true,
+                    // Resto null - completar después
+                    side: null,
+                    positions: null,
+                    stops: null,
+                    riskPlanned: null,
+                    riskExecuted: null
+                };
+
+                // Save to storage
+                const success = await StorageManager.addTrade(quickTrade);
+
+                if (success) {
+                    alert('✅ Quick Add guardado!');
+                    closeQuickAddModal();
+                    await loadPendingQuickAdds();
+                } else {
+                    alert('❌ Error al guardar');
+                }
+
+            } catch (error) {
+                console.error('Error saving quick add:', error);
+                alert('❌ Error al guardar');
+            }
+        }
+
+        async function loadPendingQuickAdds() {
+            try {
+                const todayTrades = await StorageManager.getTodayTrades();
+                const quickAdds = todayTrades.filter(t => t.isQuickAdd === true);
+
+                const pendingSection = document.getElementById('quickAddsPending');
+                const pendingList = document.getElementById('qa-pending-list');
+                const pendingCount = document.getElementById('qa-pending-count');
+
+                if (quickAdds.length === 0) {
+                    pendingSection.classList.add('hidden');
+                    return;
+                }
+
+                // Show section
+                pendingSection.classList.remove('hidden');
+                pendingCount.textContent = quickAdds.length;
+
+                // Render list
+                pendingList.innerHTML = quickAdds.map(qa => `
+                    <div class="bg-white border-2 border-yellow-300 rounded-lg p-4 flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <span class="text-2xl">⚡</span>
+                            <div>
+                                <div class="font-bold text-gray-800">${qa.symbol}</div>
+                                <div class="text-sm text-gray-600">${new Date(qa.timestamp).toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})}</div>
+                            </div>
+                            <div class="font-bold text-lg ${qa.pnl >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                ${qa.pnl >= 0 ? '+' : ''}${qa.pnl.toFixed(2)}
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="completeQuickAdd('${qa.orderID}')"
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold">
+                                ✏️ Completar
+                            </button>
+                            <button onclick="deleteQuickAdd('${qa.orderID}')"
+                                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading pending quick adds:', error);
+            }
+        }
+
+        function completeQuickAdd(orderID) {
+            // TODO: Implementar en siguiente fase
+            // Abrirá el parser normal con datos pre-cargados
+            alert('Función "Completar" se implementará cuando agreguemos Import Journal');
+        }
+
+        async function deleteQuickAdd(orderID) {
+            if (!confirm('¿Eliminar este Quick Add?')) return;
+
+            const success = await StorageManager.deleteTrade(orderID);
+            if (success) {
+                await loadPendingQuickAdds();
+            }
+        }
+
+        function completeAllQuickAdds() {
+            alert('Función "Completar Todos" se implementará con Import Journal');
+        }
+
+        // ==========================================
         // MOCK window.storage FOR DEVELOPMENT
         // ==========================================
         if (typeof window.storage === 'undefined') {
@@ -1685,6 +1909,70 @@ ${trade.observation ? `\nNotes: ${trade.observation}` : ''}
             };
         }
     </script>
+
+    <!-- Quick Add Modal -->
+    <div id="quickAddModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full mx-4">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6">⚡ Quick Add Trade</h3>
+
+            <!-- Symbol Selection -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Symbol</label>
+                <select id="qa-symbol" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none">
+                    <option value="">Select symbol...</option>
+                    <option value="BTC">BTC</option>
+                    <option value="ETH">ETH</option>
+                    <option value="SOL">SOL</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <!-- P&L Input -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">P&L (con signo)</label>
+                <input type="number"
+                       id="qa-pnl"
+                       placeholder="Ej: -50 o +120"
+                       step="0.01"
+                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-lg font-mono">
+                <p class="text-xs text-gray-500 mt-1">Negativo para pérdida, positivo para ganancia</p>
+            </div>
+
+            <!-- Running Totals -->
+            <div id="qa-running-totals" class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
+                <h4 class="font-bold text-blue-900 mb-3">📊 Running Totals Hoy:</h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-700">P&L Acumulado:</span>
+                        <span id="qa-total-pnl" class="font-bold">$0.00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-700">Trades:</span>
+                        <span id="qa-trade-count" class="font-bold">0 / 5</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-700">Límite restante:</span>
+                        <span id="qa-remaining" class="font-bold">$400</span>
+                    </div>
+                </div>
+                <div id="qa-warning" class="hidden mt-3 p-2 bg-yellow-100 border border-yellow-400 rounded text-xs text-yellow-800">
+                    ⚠️ Te estás acercando al límite
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex gap-3">
+                <button onclick="saveQuickAdd()"
+                        class="flex-1 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-bold transition-all">
+                    💾 Guardar
+                </button>
+                <button onclick="closeQuickAddModal()"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-bold transition-all">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
 
 </body>
 
