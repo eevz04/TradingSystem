@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Analytics Dashboard</title>
+
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        'navy-dark': '#1e3a5f',
+                        'navy-medium': '#2c5282',
+                        'blue-primary': '#3b82f6',
+                        'blue-secondary': '#60a5fa',
+                        'purple-primary': '#8b5cf6',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        /* Custom scrollbar for dark mode */
+        [data-theme="dark"] ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        [data-theme="dark"] ::-webkit-scrollbar-track {
+            background: #0a0e17;
+        }
+
+        [data-theme="dark"] ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Custom scrollbar for light mode */
+        [data-theme="light"] ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        [data-theme="light"] ::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+
+        [data-theme="light"] ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+
+        [data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        /* Smooth transitions */
+        * {
+            transition: background-color 0.2s ease,
+                        border-color 0.2s ease,
+                        color 0.2s ease,
+                        transform 0.2s ease,
+                        box-shadow 0.2s ease;
+        }
+
+        /* Glassmorphism base */
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        [data-theme="light"] .glass {
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Sidebar styles */
+        .sidebar-item {
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        [data-theme="light"] .sidebar-item {
+            color: rgba(0, 0, 0, 0.6);
+        }
+
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.9);
+            transform: translateX(2px);
+        }
+
+        [data-theme="light"] .sidebar-item:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: rgba(0, 0, 0, 0.9);
+        }
+
+        .sidebar-item.active {
+            /* SIN gradiente azul/púrpura - solo background sutil */
+            background: rgba(255, 255, 255, 0.08) !important;
+            background-image: none !important;
+            color: rgba(255, 255, 255, 0.95);
+            box-shadow: none !important;
+            transform: translateX(0);
+            border-left: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        [data-theme="light"] .sidebar-item.active {
+            background: rgba(0, 0, 0, 0.08) !important;
+            background-image: none !important;
+            color: rgba(0, 0, 0, 0.95);
+            border-left: 2px solid rgba(0, 0, 0, 0.2);
+        }
+
+        /* Card hover effect */
+        .card {
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+        }
+
+        [data-theme="light"] .card:hover {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        /* Sync status pulse */
+        @keyframes pulse-dot {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+        }
+
+        .sync-pulse {
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        /* Header glass effect */
+        .header-glass {
+            background: rgba(10, 14, 23, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+
+        [data-theme="light"] .header-glass {
+            background: rgba(255, 255, 255, 0.8);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        /* Sidebar glass effect - CASI INVISIBLE (como CryptoJournal) */
+        /* Eliminar TODOS los colores y gradientes del sidebar SOLO en el elemento sidebar */
+        aside#sidebar,
+        #sidebar,
+        #sidebar.sidebar-glass,
+        .sidebar-glass {
+            background: rgba(255, 255, 255, 0.02) !important;
+            background-color: rgba(255, 255, 255, 0.02) !important;
+            background-image: none !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+            /* SIN blur para evitar difuminar colores del contenido */
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: none !important;
+            /* Asegurar que no hay colores de Tailwind */
+            color: inherit !important;
+        }
+
+        /* Resetear sidebar en dark mode */
+        [data-theme="dark"] aside#sidebar,
+        [data-theme="dark"] #sidebar,
+        [data-theme="dark"] #sidebar.sidebar-glass,
+        [data-theme="dark"] .sidebar-glass {
+            background: rgba(255, 255, 255, 0.02) !important;
+            background-color: rgba(255, 255, 255, 0.02) !important;
+            background-image: none !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: none !important;
+            color: inherit !important;
+        }
+
+        /* Resetear sidebar en light mode */
+        [data-theme="light"] aside#sidebar,
+        [data-theme="light"] #sidebar,
+        [data-theme="light"] #sidebar.sidebar-glass,
+        [data-theme="light"] .sidebar-glass {
+            background: rgba(0, 0, 0, 0.02) !important;
+            background-color: rgba(0, 0, 0, 0.02) !important;
+            background-image: none !important;
+            border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: none !important;
+            color: inherit !important;
+        }
+
+        /* IMPORTANTE: El nav dentro del sidebar NO debe tener background */
+        #sidebar > nav,
+        aside#sidebar > nav {
+            background: transparent !important;
+            background-color: transparent !important;
+            background-image: none !important;
+        }
+
+        /* Typography */
+        .title-main {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            font-weight: 400;
+            opacity: 0.6;
+        }
+
+        .label-text {
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .value-text {
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        /* Placeholder icon */
+        .placeholder-icon {
+            width: 64px;
+            height: 64px;
+            opacity: 0.3;
+            margin: 0 auto 16px;
+        }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 8px 12px;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: scale(1.05);
+        }
+
+        [data-theme="light"] .theme-toggle {
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        [data-theme="light"] .theme-toggle:hover {
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        /* Sync badge */
+        .sync-badge {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: white;
+        }
+
+        /* Modal glass */
+        .modal-glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        [data-theme="light"] .modal-glass {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        /* Light mode specific overrides */
+        [data-theme="light"] body {
+            background: #ffffff !important;
+            color: #0f172a !important;
+        }
+
+        [data-theme="light"] main {
+            background: #ffffff !important;
+        }
+
+        [data-theme="light"] h1,
+        [data-theme="light"] h2,
+        [data-theme="light"] h3 {
+            color: #0f172a !important;
+        }
+
+        [data-theme="light"] .subtitle {
+            color: #64748b !important;
+        }
+
+        [data-theme="light"] .placeholder-icon {
+            opacity: 0.2;
+        }
+
+        [data-theme="light"] .sync-badge {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        [data-theme="light"] .divider {
+            border-color: rgba(0, 0, 0, 0.08) !important;
+        }
+
+        /* Auto theme text colors */
+        [data-theme-text] {
+            color: #f8fafc;
+        }
+
+        [data-theme="light"] [data-theme-text] {
+            color: #0f172a !important;
+        }
+
+        [data-theme-subtitle] {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        [data-theme="light"] [data-theme-subtitle] {
+            color: #64748b !important;
+        }
+
+        [data-theme-secondary] {
+            color: #94a3b8;
+        }
+
+        [data-theme="light"] [data-theme-secondary] {
+            color: #64748b !important;
+        }
+
+        /* Lucide icons color inheritance */
+        [data-lucide][data-theme-text] {
+            stroke: #f8fafc;
+        }
+
+        [data-theme="light"] [data-lucide][data-theme-text] {
+            stroke: #0f172a !important;
+        }
+
+        [data-lucide][data-theme-secondary] {
+            stroke: #94a3b8;
+        }
+
+        [data-theme="light"] [data-lucide][data-theme-secondary] {
+            stroke: #64748b !important;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen" id="body" style="background: #0a0e17; color: #f8fafc;">
+    
+    <!-- ============================================ -->
+    <!-- HEADER (Fixed Top) -->
+    <!-- ============================================ -->
+    <header class="header-glass fixed top-0 left-0 right-0 z-50">
+        <div class="flex items-center justify-between px-6 py-4">
+            <!-- Left: Logo & Title -->
+            <div class="flex items-center gap-4">
+                <h1 class="title-main" data-theme-text>Trading Analytics Dashboard</h1>
+            </div>
+
+            <!-- Right: Controls -->
+            <div class="flex items-center gap-3">
+                <!-- Sync Status -->
+                <div class="sync-badge">
+                    <i data-lucide="check-circle" class="w-4 h-4 sync-pulse"></i>
+                    <span>Synced</span>
+                </div>
+
+                <!-- Dark/Light Mode Toggle -->
+                <button 
+                    id="theme-toggle"
+                    class="theme-toggle"
+                    title="Toggle Dark/Light Mode"
+                >
+                    <i data-lucide="moon" id="theme-icon" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ============================================ -->
+    <!-- MAIN LAYOUT -->
+    <!-- ============================================ -->
+    <div class="flex pt-16">
+        
+        <!-- ============================================ -->
+        <!-- SIDEBAR (Fixed Left) -->
+        <!-- ============================================ -->
+        <aside 
+            id="sidebar"
+            class="sidebar-glass fixed left-0 top-16 bottom-0 w-[280px] overflow-y-auto hidden md:block"
+            style="background: rgba(255, 255, 255, 0.02) !important; background-color: rgba(255, 255, 255, 0.02) !important; background-image: none !important;"
+        >
+            <nav class="p-6 space-y-2">
+                <!-- Vista Tabla -->
+                <button 
+                    class="sidebar-item active w-full text-left flex items-center gap-3"
+                    data-view="table"
+                    onclick="switchView('table')"
+                >
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                    <span class="font-medium">Vista Tabla</span>
+                </button>
+
+                <!-- Vista Bloques -->
+                <button 
+                    class="sidebar-item w-full text-left flex items-center gap-3"
+                    data-view="blocks"
+                    onclick="switchView('blocks')"
+                >
+                    <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                    <span class="font-medium">Vista Bloques</span>
+                </button>
+
+                <!-- Vista Progreso -->
+                <button 
+                    class="sidebar-item w-full text-left flex items-center gap-3"
+                    data-view="progress"
+                    onclick="switchView('progress')"
+                >
+                    <i data-lucide="trending-up" class="w-5 h-5"></i>
+                    <span class="font-medium">Vista Progreso</span>
+                </button>
+
+                <!-- Vista Temporal -->
+                <button 
+                    class="sidebar-item w-full text-left flex items-center gap-3"
+                    data-view="temporal"
+                    onclick="switchView('temporal')"
+                >
+                    <i data-lucide="clock" class="w-5 h-5"></i>
+                    <span class="font-medium">Vista Temporal</span>
+                </button>
+
+                <!-- Vista EV -->
+                <button 
+                    class="sidebar-item w-full text-left flex items-center gap-3"
+                    data-view="ev"
+                    onclick="switchView('ev')"
+                >
+                    <i data-lucide="dice-5" class="w-5 h-5"></i>
+                    <span class="font-medium">Vista EV</span>
+                </button>
+
+                <!-- Divider -->
+                <div class="my-4 border-t" style="border-color: rgba(255, 255, 255, 0.08);"></div>
+
+                <!-- Config -->
+                <button 
+                    class="sidebar-item w-full text-left flex items-center gap-3"
+                    onclick="openConfigModal()"
+                >
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="font-medium">Configuración</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- ============================================ -->
+        <!-- MAIN CONTENT -->
+        <!-- ============================================ -->
+        <main class="flex-1 md:ml-[280px] min-h-screen" style="background: #0a0e17;">
+            
+            <!-- Vista Tabla -->
+            <div id="view-table" class="view-container p-8">
+                <div class="max-w-7xl mx-auto">
+                    <div class="mb-8">
+                        <h2 class="title-main mb-2" data-theme-text>Vista Tabla</h2>
+                        <p class="subtitle" data-theme-subtitle>Análisis completo de todos tus trades</p>
+                    </div>
+                    <div class="glass card rounded-2xl p-12 border" style="min-height: 400px;">
+                        <div class="flex flex-col items-center justify-center h-full">
+                            <i data-lucide="bar-chart-3" class="placeholder-icon"></i>
+                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Tabla de trades - Próximamente</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista Bloques -->
+            <div id="view-blocks" class="view-container hidden p-8">
+                <div class="max-w-7xl mx-auto">
+                    <div class="mb-8">
+                        <h2 class="title-main mb-2" data-theme-text>Vista Bloques</h2>
+                        <p class="subtitle" data-theme-subtitle>Análisis por bloques de 10 trades</p>
+                    </div>
+                    <div class="glass card rounded-2xl p-12 border" style="min-height: 400px;">
+                        <div class="flex flex-col items-center justify-center h-full">
+                            <i data-lucide="layout-grid" class="placeholder-icon"></i>
+                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Análisis por bloques - Próximamente</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista Progreso -->
+            <div id="view-progress" class="view-container hidden p-8">
+                <div class="max-w-7xl mx-auto">
+                    <div class="mb-8">
+                        <h2 class="title-main mb-2" data-theme-text>Vista Progreso</h2>
+                        <p class="subtitle" data-theme-subtitle>Equity curve y progreso continuo</p>
+                    </div>
+                    <div class="glass card rounded-2xl p-12 border" style="min-height: 400px;">
+                        <div class="flex flex-col items-center justify-center h-full">
+                            <i data-lucide="trending-up" class="placeholder-icon"></i>
+                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Progreso continuo - Próximamente</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista Temporal -->
+            <div id="view-temporal" class="view-container hidden p-8">
+                <div class="max-w-7xl mx-auto">
+                    <div class="mb-8">
+                        <h2 class="title-main mb-2" data-theme-text>Vista Temporal</h2>
+                        <p class="subtitle" data-theme-subtitle>Performance por hora y día de semana</p>
+                    </div>
+                    <div class="glass card rounded-2xl p-12 border" style="min-height: 400px;">
+                        <div class="flex flex-col items-center justify-center h-full">
+                            <i data-lucide="clock" class="placeholder-icon"></i>
+                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Análisis temporal - Próximamente</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista EV -->
+            <div id="view-ev" class="view-container hidden p-8">
+                <div class="max-w-7xl mx-auto">
+                    <div class="mb-8">
+                        <h2 class="title-main mb-2" data-theme-text>Vista EV</h2>
+                        <p class="subtitle" data-theme-subtitle>Expected Value y simulación Monte Carlo</p>
+                    </div>
+                    <div class="glass card rounded-2xl p-12 border" style="min-height: 400px;">
+                        <div class="flex flex-col items-center justify-center h-full">
+                            <i data-lucide="dice-5" class="placeholder-icon"></i>
+                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Expected Value y Monte Carlo - Próximamente</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODALS -->
+    <!-- ============================================ -->
+
+    <!-- Edit Trade Modal -->
+    <div id="edit-trade-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);">
+        <div class="modal-glass rounded-2xl shadow-2xl max-w-2xl w-full border">
+            <div class="flex items-center justify-between p-6 border-b" style="border-color: rgba(255, 255, 255, 0.08);">
+                <h3 class="text-xl font-bold" data-theme-text>Editar Trade</h3>
+                <button 
+                    onclick="closeEditTradeModal()"
+                    class="transition-colors"
+                    style="font-size: 24px; line-height: 1;"
+                >
+                    <i data-lucide="x" class="w-6 h-6" data-theme-secondary></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-center" data-theme-secondary>Formulario de edición - Próximamente</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config Modal -->
+    <div id="config-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);">
+        <div class="modal-glass rounded-2xl shadow-2xl max-w-3xl w-full border max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between p-6 border-b" style="border-color: rgba(255, 255, 255, 0.08);">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="settings" class="w-6 h-6" data-theme-text></i>
+                    <h3 class="text-xl font-bold" data-theme-text>Configuración</h3>
+                </div>
+                <button 
+                    onclick="closeConfigModal()"
+                    class="transition-colors"
+                    style="font-size: 24px; line-height: 1;"
+                >
+                    <i data-lucide="x" class="w-6 h-6" data-theme-secondary></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-center" data-theme-secondary>Panel de configuración - Próximamente</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT -->
+    <!-- ============================================ -->
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        // ==========================================
+        // THEME MANAGEMENT
+        // ==========================================
+        function initTheme() {
+            const savedTheme = localStorage.getItem('dashboard-theme') || 'dark';
+            applyTheme(savedTheme);
+        }
+
+        function applyTheme(theme) {
+            const body = document.getElementById('body');
+            const themeIcon = document.getElementById('theme-icon');
+            const html = document.documentElement;
+            const main = document.querySelector('main');
+            
+            // Set data-theme attribute on html element
+            html.setAttribute('data-theme', theme);
+            
+            if (theme === 'dark') {
+                body.style.background = '#0a0e17';
+                body.style.color = '#f8fafc';
+                if (main) main.style.background = '#0a0e17';
+                // Update icon
+                if (themeIcon) {
+                    themeIcon.setAttribute('data-lucide', 'moon');
+                }
+            } else {
+                body.style.background = '#ffffff';
+                body.style.color = '#0f172a';
+                if (main) main.style.background = '#ffffff';
+                // Update icon
+                if (themeIcon) {
+                    themeIcon.setAttribute('data-lucide', 'sun');
+                }
+            }
+            
+            localStorage.setItem('dashboard-theme', theme);
+            
+            // Update icon colors for Lucide icons
+            updateIconColors(theme);
+            
+            // Reinitialize Lucide icons after theme change
+            setTimeout(() => {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                    updateIconColors(theme);
+                }
+            }, 100);
+        }
+
+        function updateIconColors(theme) {
+            const textColor = theme === 'dark' ? '#f8fafc' : '#0f172a';
+            const secondaryColor = theme === 'dark' ? '#94a3b8' : '#64748b';
+            
+            // Update icons with data-theme-text
+            document.querySelectorAll('[data-lucide][data-theme-text]').forEach(icon => {
+                const svg = icon.querySelector('svg');
+                if (svg) {
+                    svg.style.stroke = textColor;
+                }
+            });
+            
+            // Update icons with data-theme-secondary
+            document.querySelectorAll('[data-lucide][data-theme-secondary]').forEach(icon => {
+                const svg = icon.querySelector('svg');
+                if (svg) {
+                    svg.style.stroke = secondaryColor;
+                }
+            });
+        }
+
+        function toggleTheme() {
+            const currentTheme = localStorage.getItem('dashboard-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        }
+
+        // ==========================================
+        // VIEW SWITCHING
+        // ==========================================
+        function switchView(viewName) {
+            // Hide all views
+            document.querySelectorAll('.view-container').forEach(view => {
+                view.classList.add('hidden');
+            });
+
+            // Show selected view
+            const selectedView = document.getElementById(`view-${viewName}`);
+            if (selectedView) {
+                selectedView.classList.remove('hidden');
+            }
+
+            // Update sidebar active state
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            const activeItem = document.querySelector(`[data-view="${viewName}"]`);
+            if (activeItem) {
+                activeItem.classList.add('active');
+            }
+        }
+
+        // ==========================================
+        // MODAL MANAGEMENT
+        // ==========================================
+        function openConfigModal() {
+            document.getElementById('config-modal').classList.remove('hidden');
+        }
+
+        function closeConfigModal() {
+            document.getElementById('config-modal').classList.add('hidden');
+        }
+
+        function closeEditTradeModal() {
+            document.getElementById('edit-trade-modal').classList.add('hidden');
+        }
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Lucide icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+
+            // Initialize theme
+            initTheme();
+
+            // Attach theme toggle
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', toggleTheme);
+            }
+
+            // Close modals on outside click
+            document.getElementById('config-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeConfigModal();
+                }
+            });
+
+            document.getElementById('edit-trade-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeEditTradeModal();
+                }
+            });
+
+            console.log('✅ Dashboard initialized');
+        });
+    </script>
+
+</body>
+
+</html>
