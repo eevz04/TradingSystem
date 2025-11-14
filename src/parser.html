@@ -564,11 +564,21 @@
                     dailyPlan = JSON.parse(result.value);
                     renderPlanSummary(dailyPlan);
                 } else {
-                    renderNoPlan();
+                    try {
+                        renderNoPlan();
+                    } catch (error) {
+                        console.error('Error rendering no plan:', error);
+                        // Continue anyway, don't crash
+                    }
                 }
             } catch (error) {
                 console.error('Error loading daily plan:', error);
-                renderNoPlan();
+                try {
+                    renderNoPlan();
+                } catch (error) {
+                    console.error('Error rendering no plan:', error);
+                    // Continue anyway, don't crash
+                }
             }
         }
 
@@ -611,8 +621,14 @@
         }
 
         function renderNoPlan() {
-            const container = document.getElementById('plan-summary');
-            container.innerHTML = `
+            const element = document.getElementById('plan-summary');
+            
+            if (!element) {
+                console.warn('⚠️ plan-summary not found, skipping renderNoPlan');
+                return;  // Exit gracefully
+            }
+            
+            element.innerHTML = `
         <div class="text-center py-6">
           <p class="text-sm text-slate-500 mb-3">⚠️ No hay plan para hoy</p>
           <a href="daily-plan.html" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
@@ -1470,16 +1486,30 @@
                 // Save to storage
                 const saveResult = await saveTrade(completeTrade);
 
+                console.log('═══════════════════════════════════════');
+                console.log('🔍 SAVE RESULT:', saveResult);
+                console.log('🔍 saveResult.success:', saveResult.success);
+                console.log('🔍 saveResult.trade:', saveResult.trade);
+                console.log('═══════════════════════════════════════');
+
                 if (!saveResult.success) {
+                    console.error('❌ Save failed:', saveResult.error);
                     throw new Error(saveResult.error);
                 }
 
-                console.log('✅ Trade saved successfully, generating exports...');
+                console.log('✅ Save successful, completeTrade object:', completeTrade);
+                console.log('✅ Calling generateOutputs...');
 
-                // Generate outputs
-                generateOutputs(completeTrade);
+                try {
+                    generateOutputs(completeTrade);
+                    console.log('✅ generateOutputs completed successfully');
+                } catch (outputError) {
+                    console.error('❌ Error in generateOutputs:', outputError);
+                    console.error('Error stack:', outputError.stack);
+                    alert('⚠️ Error generando exports: ' + outputError.message);
+                }
 
-                console.log('✅ Exports generated, showing step 4...');
+                console.log('✅ Showing Step 4...');
 
                 // Show success step
                 updateStepIndicator(4);
@@ -1678,41 +1708,58 @@
         }
 
         async function saveTrade(trade) {
+            console.log('═══════════════════════════════════════');
+            console.log('🔍 saveTrade() CALLED');
+            console.log('Trade received:', trade);
+            console.log('═══════════════════════════════════════');
+            
             try {
                 // Check if this is a Quick Add completion
                 const isQuickAddCompletion = window.currentQuickAddCompletion &&
                                             window.currentQuickAddCompletion.quickAddID;
 
+                console.log('🔍 Is Quick Add Completion?', isQuickAddCompletion);
+                
                 if (isQuickAddCompletion) {
-                    // UPDATE existing Quick Add trade
+                    console.log('📝 ENTERING QUICK ADD UPDATE FLOW');
+                    
                     const quickAddID = window.currentQuickAddCompletion.quickAddID;
-
-                    console.log('📝 Updating Quick Add:', quickAddID);
+                    console.log('📝 Quick Add ID:', quickAddID);
 
                     // Add completion metadata
                     trade.isQuickAdd = false;
                     trade.completedAt = new Date().toISOString();
                     trade.originalQuickAddTimestamp = window.currentQuickAddCompletion.quickAddTimestamp;
 
+                    console.log('📝 Calling StorageManager.updateTrade...');
+                    console.log('📝 Trade to update:', trade);
+                    
                     // Update the trade using StorageManager
                     const success = await StorageManager.updateTrade(quickAddID, trade);
 
+                    console.log('📝 StorageManager.updateTrade result:', success);
+
                     if (success) {
+                        console.log('✅ Quick Add updated successfully');
+                        
                         // Clear the completion flag
                         window.currentQuickAddCompletion = null;
-
-                        console.log('✅ Quick Add updated successfully');
+                        console.log('✅ Cleared currentQuickAddCompletion');
 
                         // Refresh pending Quick Adds
+                        console.log('🔄 Refreshing pending Quick Adds...');
                         await loadPendingQuickAdds();
+                        console.log('✅ Pending Quick Adds refreshed');
 
-                        // IMPORTANT: Return trade object so generateOutputs() can use it
+                        // CRITICAL: Return trade object
+                        console.log('✅ RETURNING SUCCESS WITH TRADE');
                         return {
                             success: true,
                             trade: trade,
                             message: '✅ Quick Add completado exitosamente!'
                         };
                     } else {
+                        console.error('❌ StorageManager.updateTrade FAILED');
                         return {
                             success: false,
                             error: 'Error al actualizar Quick Add'
@@ -1720,8 +1767,9 @@
                     }
 
                 } else {
+                    console.log('📝 ENTERING NORMAL TRADE CREATION FLOW');
+                    
                     // NORMAL FLOW: Create new trade
-                    // Get existing trades
                     let tradesData = {
                         version: '1.0',
                         lastUpdated: new Date().toISOString(),
@@ -1729,10 +1777,17 @@
                         trades: []
                     };
 
-                    const result = await window.storage.get(CONFIG.storageKeys.trades);
-                    if (result && result.value) {
-                        tradesData = JSON.parse(result.value);
+                    console.log('📝 Getting existing trades...');
+                    const existingData = await window.storage.get(CONFIG.storageKeys.trades);
+                    
+                    if (existingData && existingData.value) {
+                        console.log('📝 Found existing trades data');
+                        tradesData = JSON.parse(existingData.value);
+                    } else {
+                        console.log('📝 No existing trades, creating new structure');
                     }
+
+                    console.log('📝 Current trades count:', tradesData.trades.length);
 
                     // Check for duplicates
                     const isDuplicate = tradesData.trades.some(t =>
@@ -1740,6 +1795,7 @@
                     );
 
                     if (isDuplicate) {
+                        console.error('❌ Duplicate trade detected');
                         return {
                             success: false,
                             error: 'Trade duplicado: Order ID ya existe en el sistema'
@@ -1751,19 +1807,24 @@
                     tradesData.totalTrades = tradesData.trades.length;
                     tradesData.lastUpdated = new Date().toISOString();
 
+                    console.log('📝 New trades count:', tradesData.trades.length);
+                    console.log('📝 Saving to storage...');
+
                     // Save
                     await window.storage.set(CONFIG.storageKeys.trades, JSON.stringify(tradesData));
 
-                    console.log('✅ Trade saved:', trade);
+                    console.log('✅ Trade saved to storage');
+                    console.log('✅ RETURNING SUCCESS WITH TRADE');
+                    
+                    return {
+                        success: true,
+                        trade: trade
+                    };
                 }
 
-                return {
-                    success: true,
-                    trade: trade
-                };
-
             } catch (error) {
-                console.error('Error in saveTrade:', error);
+                console.error('❌❌❌ ERROR IN saveTrade:', error);
+                console.error('Error stack:', error.stack);
                 return {
                     success: false,
                     error: 'Error guardando en storage: ' + error.message
@@ -1775,11 +1836,23 @@
             console.log('📊 generateOutputs called with trade:', trade);
             
             // Validate required fields
-            if (!trade.symbol || !trade.entry || !trade.exit || trade.pnl === undefined) {
-                console.error('❌ generateOutputs: Missing required fields', trade);
+            if (!trade.symbol || !trade.entry || 
+                (!trade.exit && !trade.exitPrice) || 
+                (trade.pnl === undefined && trade.result === undefined)) {
+                
+                console.error('❌ generateOutputs: Missing required fields', {
+                    symbol: trade.symbol,
+                    entry: trade.entry,
+                    exit: trade.exit,
+                    exitPrice: trade.exitPrice,
+                    pnl: trade.pnl,
+                    result: trade.result
+                });
                 alert('Error: Datos del trade incompletos. No se pueden generar exports.');
                 return;
             }
+
+            console.log('✅ Validation passed, generating outputs...');
             
             // Handle both property name variations
             const result = trade.result || trade.pnl || 0;
