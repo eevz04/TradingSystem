@@ -902,6 +902,67 @@
             },
 
             // ─────────────────────────────────────────────────────
+            // CALCULATE METRICS
+            // ─────────────────────────────────────────────────────
+            calculateMetrics() {
+                if (this.trades.length === 0) {
+                    return null;
+                }
+
+                const totalTrades = this.trades.length;
+                const winners = this.trades.filter(t => (t.pnl || t.result || 0) > 0);
+                const losers = this.trades.filter(t => (t.pnl || t.result || 0) < 0);
+
+                const winRate = totalTrades > 0 ? (winners.length / totalTrades * 100) : 0;
+
+                const totalPnL = this.trades.reduce((sum, t) => {
+                    return sum + (t.pnl || t.result || 0);
+                }, 0);
+
+                const avgR = this.trades.reduce((sum, t) => {
+                    return sum + (t.rReal || t.rExecuted || 0);
+                }, 0) / totalTrades;
+
+                const totalWins = winners.reduce((sum, t) => sum + (t.pnl || t.result || 0), 0);
+                const totalLosses = Math.abs(losers.reduce((sum, t) => sum + (t.pnl || t.result || 0), 0));
+                const profitFactor = totalLosses > 0 ? (totalWins / totalLosses) : totalWins > 0 ? 999 : 0;
+
+                const bestTrade = Math.max(...this.trades.map(t => t.pnl || t.result || 0));
+                const worstTrade = Math.min(...this.trades.map(t => t.pnl || t.result || 0));
+
+                // Current streak
+                let currentStreak = 0;
+                let streakType = '';
+                for (let i = this.trades.length - 1; i >= 0; i--) {
+                    const pnl = this.trades[i].pnl || this.trades[i].result || 0;
+                    if (i === this.trades.length - 1) {
+                        currentStreak = 1;
+                        streakType = pnl > 0 ? 'W' : 'L';
+                    } else {
+                        const currentType = pnl > 0 ? 'W' : 'L';
+                        if (currentType === streakType) {
+                            currentStreak++;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                return {
+                    totalTrades,
+                    winRate,
+                    totalPnL,
+                    avgR,
+                    profitFactor,
+                    bestTrade,
+                    worstTrade,
+                    currentStreak: `${currentStreak}${streakType}`,
+                    winners: winners.length,
+                    losers: losers.length
+                };
+            },
+
+            // ─────────────────────────────────────────────────────
             // EVENT LISTENERS
             // ─────────────────────────────────────────────────────
             setupEventListeners() {
@@ -995,6 +1056,100 @@
                     return;
                 }
 
+                // ─── CALCULATE METRICS ───
+                const metrics = this.calculateMetrics();
+
+                // ─── BUILD METRICS CARDS HTML ───
+                const metricsHTML = metrics ? `
+                    <!-- Metrics Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+                        <!-- Total Trades -->
+                        <div class="rounded-xl p-6 border border-white/10"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm opacity-60 uppercase tracking-wide font-semibold">Total Trades</span>
+                                <i data-lucide="bar-chart-3" class="w-5 h-5 opacity-40"></i>
+                            </div>
+                            <div class="text-3xl font-bold">${metrics.totalTrades}</div>
+                            <div class="text-xs opacity-50 mt-1">${metrics.winners}W / ${metrics.losers}L</div>
+                        </div>
+
+                        <!-- Win Rate -->
+                        <div class="rounded-xl p-6 border border-white/10"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm opacity-60 uppercase tracking-wide font-semibold">Win Rate</span>
+                                <i data-lucide="target" class="w-5 h-5 opacity-40"></i>
+                            </div>
+                            <div class="text-3xl font-bold ${metrics.winRate >= 50 ? 'text-emerald-400' : 'text-red-400'}">
+                                ${metrics.winRate.toFixed(1)}%
+                            </div>
+                            <div class="text-xs opacity-50 mt-1">Target: 50%+</div>
+                        </div>
+
+                        <!-- Total P&L -->
+                        <div class="rounded-xl p-6 border border-white/10"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm opacity-60 uppercase tracking-wide font-semibold">Total P&L</span>
+                                <i data-lucide="dollar-sign" class="w-5 h-5 opacity-40"></i>
+                            </div>
+                            <div class="text-3xl font-bold font-mono ${metrics.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                                ${metrics.totalPnL >= 0 ? '+' : ''}${metrics.totalPnL.toFixed(2)}
+                            </div>
+                            <div class="text-xs opacity-50 mt-1">Net result</div>
+                        </div>
+
+                        <!-- Average R -->
+                        <div class="rounded-xl p-6 border border-white/10"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm opacity-60 uppercase tracking-wide font-semibold">Average R</span>
+                                <i data-lucide="trending-up" class="w-5 h-5 opacity-40"></i>
+                            </div>
+                            <div class="text-3xl font-bold font-mono ${metrics.avgR >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                                ${metrics.avgR >= 0 ? '+' : ''}${metrics.avgR.toFixed(2)}R
+                            </div>
+                            <div class="text-xs opacity-50 mt-1">Per trade</div>
+                        </div>
+
+                    </div>
+
+                    <!-- Additional Metrics Row -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+
+                        <div class="rounded-xl p-4 border border-white/10"
+                             style="background: rgba(255,255,255,0.02); backdrop-filter: blur(12px);">
+                            <div class="text-xs opacity-60 uppercase tracking-wide font-semibold mb-1">Profit Factor</div>
+                            <div class="text-xl font-bold ${metrics.profitFactor >= 2 ? 'text-emerald-400' : metrics.profitFactor >= 1 ? 'text-blue-400' : 'text-red-400'}">
+                                ${metrics.profitFactor < 999 ? metrics.profitFactor.toFixed(2) : '∞'}
+                            </div>
+                        </div>
+
+                        <div class="rounded-xl p-4 border border-white/10"
+                             style="background: rgba(255,255,255,0.02); backdrop-filter: blur(12px);">
+                            <div class="text-xs opacity-60 uppercase tracking-wide font-semibold mb-1">Best Trade</div>
+                            <div class="text-xl font-bold text-emerald-400 font-mono">+${metrics.bestTrade.toFixed(2)}</div>
+                        </div>
+
+                        <div class="rounded-xl p-4 border border-white/10"
+                             style="background: rgba(255,255,255,0.02); backdrop-filter: blur(12px);">
+                            <div class="text-xs opacity-60 uppercase tracking-wide font-semibold mb-1">Worst Trade</div>
+                            <div class="text-xl font-bold text-red-400 font-mono">-${Math.abs(metrics.worstTrade).toFixed(2)}</div>
+                        </div>
+
+                        <div class="rounded-xl p-4 border border-white/10"
+                             style="background: rgba(255,255,255,0.02); backdrop-filter: blur(12px);">
+                            <div class="text-xs opacity-60 uppercase tracking-wide font-semibold mb-1">Current Streak</div>
+                            <div class="text-xl font-bold ${metrics.currentStreak.includes('W') ? 'text-emerald-400' : 'text-red-400'}">
+                                ${metrics.currentStreak}
+                            </div>
+                        </div>
+
+                    </div>
+                ` : '';
+
                 // ─── SORT TRADES (most recent first) ───
                 const sorted = [...this.trades].sort((a, b) => {
                     const dateA = new Date(a.timestamp || a.createdAt || 0);
@@ -1055,7 +1210,7 @@
                     </div>
                 `;
 
-                container.innerHTML = tableHTML;
+                container.innerHTML = metricsHTML + tableHTML;
 
                 // Reinitialize Lucide icons
                 lucide.createIcons();
