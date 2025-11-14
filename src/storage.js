@@ -42,8 +42,19 @@ const StorageManager = {
      */
     async getTrades() {
         try {
-            const result = await window.storage.get(this.KEYS.TRADES);
-            return result?.value ? JSON.parse(result.value) : null;
+            let data;
+
+            if (typeof window.storage !== 'undefined') {
+                // Claude.ai environment
+                const result = await window.storage.get(this.KEYS.TRADES);
+                data = result?.value ? JSON.parse(result.value) : null;
+            } else {
+                // Local file or browser without window.storage
+                const stored = localStorage.getItem(this.KEYS.TRADES);
+                data = stored ? JSON.parse(stored) : null;
+            }
+
+            return data;
         } catch (error) {
             console.error('Error getting trades:', error);
             return null;
@@ -56,7 +67,16 @@ const StorageManager = {
     async setTrades(tradesData) {
         try {
             tradesData.lastUpdated = new Date().toISOString();
-            await window.storage.set(this.KEYS.TRADES, JSON.stringify(tradesData));
+            const jsonData = JSON.stringify(tradesData);
+
+            if (typeof window.storage !== 'undefined') {
+                // Claude.ai environment
+                await window.storage.set(this.KEYS.TRADES, jsonData);
+            } else {
+                // Local file or browser without window.storage
+                localStorage.setItem(this.KEYS.TRADES, jsonData);
+            }
+
             // TODO: Sync to Google Sheets (future)
             return true;
         } catch (error) {
@@ -249,8 +269,19 @@ const StorageManager = {
         try {
             const dateKey = this.formatDateKey(date);
             const key = `${this.KEYS.DAILY_PLAN_PREFIX}${dateKey}`;
-            const result = await window.storage.get(key);
-            return result?.value ? JSON.parse(result.value) : null;
+            let data;
+
+            if (typeof window.storage !== 'undefined') {
+                // Claude.ai environment
+                const result = await window.storage.get(key);
+                data = result?.value ? JSON.parse(result.value) : null;
+            } else {
+                // Local file or browser without window.storage
+                const stored = localStorage.getItem(key);
+                data = stored ? JSON.parse(stored) : null;
+            }
+
+            return data;
         } catch (error) {
             console.error('Error getting daily plan:', error);
             return null;
@@ -266,12 +297,26 @@ const StorageManager = {
             const key = `${this.KEYS.DAILY_PLAN_PREFIX}${dateKey}`;
 
             planData.savedAt = new Date().toISOString();
-            await window.storage.set(key, JSON.stringify(planData));
+            const jsonData = JSON.stringify(planData);
 
-            // Update current pointer if saving today's plan
-            const today = new Date();
-            if (this.isSameDay(date, today)) {
-                await window.storage.set(this.KEYS.DAILY_PLAN_CURRENT, dateKey);
+            if (typeof window.storage !== 'undefined') {
+                // Claude.ai environment
+                await window.storage.set(key, jsonData);
+
+                // Update current pointer if saving today's plan
+                const today = new Date();
+                if (this.isSameDay(date, today)) {
+                    await window.storage.set(this.KEYS.DAILY_PLAN_CURRENT, dateKey);
+                }
+            } else {
+                // Local file or browser without window.storage
+                localStorage.setItem(key, jsonData);
+
+                // Update current pointer if saving today's plan
+                const today = new Date();
+                if (this.isSameDay(date, today)) {
+                    localStorage.setItem(this.KEYS.DAILY_PLAN_CURRENT, dateKey);
+                }
             }
 
             return true;
@@ -313,15 +358,29 @@ const StorageManager = {
     async exportAll() {
         try {
             const trades = await this.getTrades();
+            let config, alerts, objectives;
 
-            const configResult = await window.storage.get(this.KEYS.CONFIG);
-            const config = configResult?.value ? JSON.parse(configResult.value) : null;
+            if (typeof window.storage !== 'undefined') {
+                // Claude.ai environment
+                const configResult = await window.storage.get(this.KEYS.CONFIG);
+                config = configResult?.value ? JSON.parse(configResult.value) : null;
 
-            const alertsResult = await window.storage.get(this.KEYS.ALERTS);
-            const alerts = alertsResult?.value ? JSON.parse(alertsResult.value) : null;
+                const alertsResult = await window.storage.get(this.KEYS.ALERTS);
+                alerts = alertsResult?.value ? JSON.parse(alertsResult.value) : null;
 
-            const objectivesResult = await window.storage.get(this.KEYS.OBJECTIVES);
-            const objectives = objectivesResult?.value ? JSON.parse(objectivesResult.value) : null;
+                const objectivesResult = await window.storage.get(this.KEYS.OBJECTIVES);
+                objectives = objectivesResult?.value ? JSON.parse(objectivesResult.value) : null;
+            } else {
+                // Local file or browser without window.storage
+                const configStored = localStorage.getItem(this.KEYS.CONFIG);
+                config = configStored ? JSON.parse(configStored) : null;
+
+                const alertsStored = localStorage.getItem(this.KEYS.ALERTS);
+                alerts = alertsStored ? JSON.parse(alertsStored) : null;
+
+                const objectivesStored = localStorage.getItem(this.KEYS.OBJECTIVES);
+                objectives = objectivesStored ? JSON.parse(objectivesStored) : null;
+            }
 
             return {
                 trades,
@@ -342,9 +401,19 @@ const StorageManager = {
     async importAll(data) {
         try {
             if (data.trades) await this.setTrades(data.trades);
-            if (data.config) await window.storage.set(this.KEYS.CONFIG, JSON.stringify(data.config));
-            if (data.alerts) await window.storage.set(this.KEYS.ALERTS, JSON.stringify(data.alerts));
-            if (data.objectives) await window.storage.set(this.KEYS.OBJECTIVES, JSON.stringify(data.objectives));
+
+            if (typeof window.storage !== 'undefined') {
+                // Claude.ai environment
+                if (data.config) await window.storage.set(this.KEYS.CONFIG, JSON.stringify(data.config));
+                if (data.alerts) await window.storage.set(this.KEYS.ALERTS, JSON.stringify(data.alerts));
+                if (data.objectives) await window.storage.set(this.KEYS.OBJECTIVES, JSON.stringify(data.objectives));
+            } else {
+                // Local file or browser without window.storage
+                if (data.config) localStorage.setItem(this.KEYS.CONFIG, JSON.stringify(data.config));
+                if (data.alerts) localStorage.setItem(this.KEYS.ALERTS, JSON.stringify(data.alerts));
+                if (data.objectives) localStorage.setItem(this.KEYS.OBJECTIVES, JSON.stringify(data.objectives));
+            }
+
             return true;
         } catch (error) {
             console.error('Error importing data:', error);

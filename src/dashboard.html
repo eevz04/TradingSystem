@@ -398,6 +398,21 @@
         [data-theme="light"] [data-lucide][data-theme-secondary] {
             stroke: #64748b !important;
         }
+
+        /* Monospace font for numbers */
+        .font-mono {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Table smooth transitions */
+        table tbody tr {
+            transition: background-color 0.15s ease, transform 0.15s ease;
+        }
+
+        table tbody tr:hover {
+            transform: scale(1.001);
+        }
     </style>
 </head>
 
@@ -651,6 +666,9 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- Storage Manager -->
+    <script src="storage.js"></script>
+
     <script>
         // ==========================================
         // THEME MANAGEMENT
@@ -802,6 +820,296 @@
 
             console.log('✅ Dashboard initialized');
         });
+
+        // ════════════════════════════════════════════════════════
+        // DASHBOARD APP - Main Controller
+        // ════════════════════════════════════════════════════════
+
+        const DashboardApp = {
+            trades: [],
+            currentView: 'table',
+
+            // ─────────────────────────────────────────────────────
+            // INITIALIZATION
+            // ─────────────────────────────────────────────────────
+            async init() {
+                console.log('🚀 Dashboard initializing...');
+
+                try {
+                    // Initialize StorageManager
+                    await StorageManager.init();
+                    console.log('✅ StorageManager initialized');
+
+                    // Load all trades
+                    await this.loadTrades();
+
+                    // Render current view
+                    this.renderActiveView();
+
+                    // Setup event listeners
+                    this.setupEventListeners();
+
+                    console.log('✅ Dashboard ready');
+                } catch (error) {
+                    console.error('❌ Dashboard initialization error:', error);
+                }
+            },
+
+            // ─────────────────────────────────────────────────────
+            // LOAD TRADES FROM STORAGE
+            // ─────────────────────────────────────────────────────
+            async loadTrades() {
+                console.log('📊 Loading trades from storage...');
+
+                const data = await StorageManager.getTrades();
+
+                if (data && data.trades) {
+                    // Filter out Quick Adds (incomplete trades)
+                    this.trades = data.trades.filter(t => !t.isQuickAdd);
+
+                    console.log(`✅ Loaded ${this.trades.length} complete trades`);
+                    console.log('Trades:', this.trades);
+                } else {
+                    this.trades = [];
+                    console.log('⚠️ No trades found in storage');
+                }
+            },
+
+            // ─────────────────────────────────────────────────────
+            // EVENT LISTENERS
+            // ─────────────────────────────────────────────────────
+            setupEventListeners() {
+                // Listen for storage changes (when new trades added from parser)
+                window.addEventListener('storage', async (e) => {
+                    if (e.key === 'trades-data') {
+                        console.log('🔄 Storage changed, reloading trades...');
+                        await this.loadTrades();
+                        this.renderActiveView();
+                    }
+                });
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER ACTIVE VIEW
+            // ─────────────────────────────────────────────────────
+            renderActiveView() {
+                const activeTab = document.querySelector('.sidebar-item.active');
+                const viewId = activeTab?.getAttribute('data-view') || 'table';
+
+                console.log(`📊 Rendering view: ${viewId}`);
+                this.currentView = viewId;
+
+                switch(viewId) {
+                    case 'table':
+                        this.renderTableView();
+                        break;
+                    case 'blocks':
+                    case 'progress':
+                    case 'temporal':
+                    case 'ev':
+                        // Keep existing placeholder (coming soon)
+                        console.log(`View ${viewId} - Placeholder shown`);
+                        break;
+                    default:
+                        console.warn(`Unknown view: ${viewId}`);
+                }
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER TABLE VIEW
+            // ─────────────────────────────────────────────────────
+            renderTableView() {
+                console.log('📊 Rendering Vista Tabla with', this.trades.length, 'trades');
+
+                const container = document.getElementById('view-table');
+
+                if (!container) {
+                    console.error('❌ Container #view-table not found');
+                    return;
+                }
+
+                // ─── EMPTY STATE ───
+                if (this.trades.length === 0) {
+                    container.innerHTML = `
+                        <div class="max-w-7xl mx-auto">
+                            <div class="mb-8">
+                                <h2 class="title-main mb-2" data-theme-text>Vista Tabla</h2>
+                                <p class="subtitle" data-theme-subtitle>Análisis completo de todos tus trades</p>
+                            </div>
+                            <div class="flex flex-col items-center justify-center py-20">
+                                <i data-lucide="inbox" class="w-24 h-24 mb-6 opacity-20"></i>
+                                <h3 class="text-3xl font-bold mb-3">No hay trades registrados</h3>
+                                <p class="text-lg opacity-50 mb-8 text-center max-w-md">
+                                    Comienza agregando tu primer trade desde el Parser
+                                </p>
+                                <a href="parser.html"
+                                   class="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105">
+                                    <i data-lucide="plus" class="w-5 h-5"></i>
+                                    Ir al Parser
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                // ─── SORT TRADES (most recent first) ───
+                const sorted = [...this.trades].sort((a, b) => {
+                    const dateA = new Date(a.timestamp || a.createdAt || 0);
+                    const dateB = new Date(b.timestamp || b.createdAt || 0);
+                    return dateB - dateA;
+                });
+
+                console.log('Sorted trades (newest first):', sorted.length);
+
+                // ─── BUILD TABLE HTML ───
+                const tableHTML = `
+                    <div class="max-w-7xl mx-auto">
+                        <div class="mb-8">
+                            <h2 class="title-main mb-2" data-theme-text>Vista Tabla</h2>
+                            <p class="subtitle" data-theme-subtitle>Análisis completo de todos tus trades</p>
+                        </div>
+
+                        <!-- Table Container -->
+                        <div class="rounded-2xl overflow-hidden border border-white/10"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+
+                            <!-- Table Header -->
+                            <div class="px-6 py-5 border-b border-white/10">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h3 class="text-2xl font-bold">Historial de Trades</h3>
+                                        <p class="text-sm opacity-50 mt-1">${sorted.length} trades registrados</p>
+                                    </div>
+                                    <a href="parser.html"
+                                       class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg font-medium transition-all border border-blue-500/30">
+                                        <i data-lucide="plus" class="w-4 h-4"></i>
+                                        Agregar Trade
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Table -->
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="border-b border-white/10">
+                                            <th class="text-left py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">#</th>
+                                            <th class="text-left py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Symbol</th>
+                                            <th class="text-left py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Type</th>
+                                            <th class="text-right py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Entry</th>
+                                            <th class="text-right py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Exit</th>
+                                            <th class="text-right py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Volume</th>
+                                            <th class="text-right py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Result</th>
+                                            <th class="text-right py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">R Real</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${sorted.map(trade => this.renderTradeRow(trade)).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.innerHTML = tableHTML;
+
+                // Reinitialize Lucide icons
+                lucide.createIcons();
+
+                console.log(`✅ Table rendered with ${sorted.length} trades`);
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER SINGLE TRADE ROW
+            // ─────────────────────────────────────────────────────
+            renderTradeRow(trade) {
+                // Handle field name variations (parser legacy bugs)
+                const pnl = trade.pnl || trade.result || 0;
+                const rReal = trade.rReal || trade.rExecuted || 0;
+                const exit = trade.exit || trade.exitPrice || 0;
+
+                // Color coding
+                const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+                const rColor = rReal >= 0 ? 'text-emerald-400' : 'text-red-400';
+                const pnlSign = pnl >= 0 ? '+' : '-';
+                const rSign = rReal >= 0 ? '+' : '-';
+
+                // Type badge styling
+                const typeBadge = trade.type === 'LONG'
+                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                    : 'bg-red-500/15 text-red-400 border-red-500/30';
+
+                return `
+                    <tr class="border-b border-white/5 hover:bg-white/[0.02] transition-all duration-150 cursor-pointer group"
+                        data-trade-id="${trade.orderID || trade.tradeNumber}">
+
+                        <td class="py-4 px-6 text-sm font-bold group-hover:text-blue-400 transition-colors">
+                            ${trade.tradeNumber || '-'}
+                        </td>
+
+                        <td class="py-4 px-6 text-sm font-bold">
+                            ${trade.symbol || '-'}
+                        </td>
+
+                        <td class="py-4 px-6 text-sm">
+                            <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border ${typeBadge}">
+                                ${trade.type || '-'}
+                            </span>
+                        </td>
+
+                        <td class="py-4 px-6 text-sm text-right font-mono opacity-80">
+                            ${trade.entry ? trade.entry.toFixed(2) : '-'}
+                        </td>
+
+                        <td class="py-4 px-6 text-sm text-right font-mono opacity-80">
+                            ${exit ? exit.toFixed(2) : '-'}
+                        </td>
+
+                        <td class="py-4 px-6 text-sm text-right font-mono opacity-80">
+                            ${trade.volume || '-'}
+                        </td>
+
+                        <td class="py-4 px-6 text-sm text-right font-mono font-bold ${pnlColor}">
+                            ${pnlSign}${Math.abs(pnl).toFixed(2)}
+                        </td>
+
+                        <td class="py-4 px-6 text-sm text-right font-mono font-bold ${rColor}">
+                            ${rSign}${Math.abs(rReal).toFixed(2)}R
+                        </td>
+                    </tr>
+                `;
+            }
+        };
+
+        // ════════════════════════════════════════════════════════
+        // INITIALIZE APP
+        // ════════════════════════════════════════════════════════
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => DashboardApp.init());
+        } else {
+            DashboardApp.init();
+        }
+
+        // ════════════════════════════════════════════════════════
+        // UPDATE TAB SWITCHING TO TRIGGER RENDER
+        // ════════════════════════════════════════════════════════
+
+        // Wrap existing switchView function
+        const originalSwitchView = window.switchView;
+        if (originalSwitchView) {
+            window.switchView = function(viewId) {
+                // Call original function
+                originalSwitchView(viewId);
+
+                // Trigger render
+                DashboardApp.currentView = viewId;
+                DashboardApp.renderActiveView();
+            };
+        }
     </script>
 
 </body>
