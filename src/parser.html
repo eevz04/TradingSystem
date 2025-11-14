@@ -1686,8 +1686,10 @@
                         // Refresh pending Quick Adds
                         await loadPendingQuickAdds();
 
+                        // IMPORTANT: Return trade object so generateOutputs() can use it
                         return {
                             success: true,
+                            trade: trade,
                             message: '✅ Quick Add completado exitosamente!'
                         };
                     } else {
@@ -2417,6 +2419,12 @@
                 const previewDiv = document.getElementById('parse-preview');
                 const previewContent = document.getElementById('parse-preview-content');
 
+                if (!previewDiv || !previewContent) {
+                    console.error('❌ Preview elements not found');
+                    alert('❌ Error: Elementos de preview no encontrados');
+                    return;
+                }
+
                 previewContent.innerHTML = `
 <strong>Symbol:</strong> ${position.symbol}<br>
 <strong>Type:</strong> ${position.type}<br>
@@ -2426,7 +2434,17 @@
 <strong>P&L:</strong> ${position.pnl.toFixed(2)}
                 `;
 
+                // Force show preview - remove hidden class and ensure visibility
                 previewDiv.classList.remove('hidden');
+                previewDiv.style.display = 'block';
+
+                console.log('✅ Preview shown:', {
+                    symbol: position.symbol,
+                    entry: position.entry,
+                    exit: position.exit,
+                    volume: position.volume,
+                    pnl: position.pnl
+                });
 
                 validateComplete(position);
 

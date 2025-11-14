@@ -158,13 +158,19 @@ const StorageManager = {
 
     /**
      * Get trades for today
+     * FIX: Compares dates correctly by using local date components for comparison
+     * This ensures "today" means the current calendar day in local timezone
      */
     async getTodayTrades() {
         try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
+            // Get current date in local timezone
+            const now = new Date();
+            const localYear = now.getFullYear();
+            const localMonth = now.getMonth();
+            const localDate = now.getDate();
+
+            // Create date strings for comparison (YYYY-MM-DD format)
+            const todayDateStr = `${localYear}-${String(localMonth + 1).padStart(2, '0')}-${String(localDate).padStart(2, '0')}`;
 
             const allTrades = await this.getTrades();
             if (!allTrades || !allTrades.trades) {
@@ -173,8 +179,7 @@ const StorageManager = {
             }
 
             console.log('📊 getTodayTrades Debug:', {
-                today: today.toISOString(),
-                tomorrow: tomorrow.toISOString(),
+                todayDateStr: todayDateStr,
                 totalTrades: allTrades.trades.length
             });
 
@@ -199,15 +204,23 @@ const StorageManager = {
                     return false;
                 }
 
-                // Verificar si es de hoy
-                const isToday = tradeDate >= today && tradeDate < tomorrow;
+                // Get trade date in local timezone for comparison
+                // This ensures we compare calendar days, not UTC days
+                const tradeYear = tradeDate.getFullYear();
+                const tradeMonth = tradeDate.getMonth();
+                const tradeDay = tradeDate.getDate();
+                const tradeDateStr = `${tradeYear}-${String(tradeMonth + 1).padStart(2, '0')}-${String(tradeDay).padStart(2, '0')}`;
+
+                // Compare date strings (calendar days)
+                const isToday = tradeDateStr === todayDateStr;
 
                 // DEBUG: Mostrar TODOS los trades con sus fechas
                 console.log('Trade check:', {
                     orderID: trade.orderID,
                     symbol: trade.symbol,
                     timestamp: trade.timestamp,
-                    tradeDate: tradeDate.toISOString(),
+                    tradeDateStr: tradeDateStr,
+                    todayDateStr: todayDateStr,
                     isToday: isToday
                 });
 
