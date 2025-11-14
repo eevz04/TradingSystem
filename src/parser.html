@@ -714,13 +714,12 @@
         function detectFormatType(lines) {
             const firstLine = lines[0].trim();
             const parts = firstLine.split(/\t+|\s{2,}/);
+            
+            console.log('🔍 detectFormatType - parts:', parts);
+            console.log('🔍 detectFormatType - parts.length:', parts.length);
 
-            // Table format characteristics:
-            // - Has 8+ columns
-            // - Column 4 contains "Opening" or "Closing"
-            // - Symbol is first column (letters only like ETHUSD, BTCUSD)
-
-            if (parts.length >= 8) {
+            // FORMATO TABLA (8 columnas): Symbol, DateTime, OrderID, Side, Position, Volume, Price, P&L
+            if (parts.length >= 8 && parts.length < 10) {
                 const hasOpeningClosing = parts.some(p =>
                     p.toLowerCase().includes('opening') ||
                     p.toLowerCase().includes('closing')
@@ -729,11 +728,23 @@
                 const firstColIsSymbol = /^[A-Z]+$/.test(parts[0].replace(/[^A-Z]/g, ''));
 
                 if (hasOpeningClosing && firstColIsSymbol) {
+                    console.log('✅ Detected: TABLE format (8 cols)');
                     return 'table';
                 }
             }
 
-            // Default to funding format
+            // FORMATO FUNDING/TEXTO (10 columnas): OrderID, Timestamp, Symbol, Type, Entry, Exit, PnLPerUnit, Volume, TotalPnL, Notes
+            if (parts.length >= 10) {
+                const firstColIsNumber = /^\d+$/.test(parts[0]);
+                const thirdColIsSymbol = /^[A-Z]+$/.test(parts[2].replace(/[^A-Z]/g, ''));
+                
+                if (firstColIsNumber && thirdColIsSymbol) {
+                    console.log('✅ Detected: FUNDING/TEXT format (10 cols)');
+                    return 'funding';
+                }
+            }
+
+            console.log('⚠️ Could not detect format clearly, defaulting to funding');
             return 'funding';
         }
 
@@ -1492,15 +1503,24 @@
         }
 
         function buildCompleteTrade(detectedTrade, formData) {
+            // Use detectedTrade if provided, otherwise use window.currentTrade
+            const baseTrade = detectedTrade || window.currentTrade;
+            
+            if (!baseTrade) {
+                throw new Error('No trade data available');
+            }
+            
+            console.log('🔨 buildCompleteTrade - baseTrade:', baseTrade);
+
             const takeProfitValue = formData.get('takeProfit');
             const takeProfit = takeProfitValue ? parseFloat(takeProfitValue) : null;
             const riskPlanned = parseFloat(formData.get('riskPlanned'));
 
             let stopLoss, riskExecuted, positions, orderIDs;
 
-            if (detectedTrade.isGrouped) {
+            if (baseTrade.isGrouped) {
                 // For grouped trades, use positions data
-                positions = detectedTrade.positions.map(p => ({
+                positions = baseTrade.positions.map(p => ({
                     ...p,
                     stopLoss: p.stopLoss,
                     takeProfit: takeProfit,
@@ -1512,36 +1532,36 @@
                 stopLoss = positions.reduce((sum, p) => sum + p.stopLoss, 0) / positions.length;
 
                 // Use total risk from positions
-                riskExecuted = detectedTrade.riskExecuted;
+                riskExecuted = baseTrade.riskExecuted;
 
                 // Collect all order IDs
-                orderIDs = detectedTrade.orderID.split(';');
+                orderIDs = baseTrade.orderID.split(';');
 
             } else {
                 // For simple trades, get stop from form
                 stopLoss = parseFloat(formData.get('stopLoss'));
 
                 // Calculate risk executed
-                const entry = detectedTrade.entry;
-                const volume = detectedTrade.volume;
+                const entry = baseTrade.entry;
+                const volume = baseTrade.volume;
                 const riskPerUnit = Math.abs(entry - stopLoss);
                 riskExecuted = riskPerUnit * volume;
 
                 // Single position
                 positions = [{
-                    orderID: detectedTrade.orderID,
-                    entryPrice: detectedTrade.entry,
-                    exitPrice: detectedTrade.exit,
+                    orderID: baseTrade.orderID,
+                    entryPrice: baseTrade.entry,
+                    exitPrice: baseTrade.exit,
                     stopLoss: stopLoss,
                     takeProfit: takeProfit,
-                    volume: detectedTrade.volume,
-                    pnl: detectedTrade.pnl,
-                    timeBRT: detectedTrade.timeBRT,
+                    volume: baseTrade.volume,
+                    pnl: baseTrade.pnl,
+                    timeBRT: baseTrade.timeBRT,
                     riskPerUnit: riskPerUnit,
                     riskExecuted: riskExecuted
                 }];
 
-                orderIDs = [detectedTrade.orderID];
+                orderIDs = [baseTrade.orderID];
             }
 
             // Calculate deviation
@@ -1556,8 +1576,8 @@
                 flag = '⚠';
             }
 
-            const rPlanned = riskPlanned > 0 ? detectedTrade.pnl / riskPlanned : 0;
-            const rExecuted = riskExecuted > 0 ? detectedTrade.pnl / riskExecuted : 0;
+            const rPlanned = riskPlanned > 0 ? baseTrade.pnl / riskPlanned : 0;
+            const rExecuted = riskExecuted > 0 ? baseTrade.pnl / riskExecuted : 0;
 
             // Parse rules violated
             let rulesViolated = [];
@@ -1570,29 +1590,29 @@
                 tradeNumber: parseInt(formData.get('tradeNumber')),
                 block: parseInt(formData.get('block')) || 1,
                 orderIDs: orderIDs,
-                isGrouped: detectedTrade.isGrouped,
-                groupCount: detectedTrade.groupCount,
+                isGrouped: baseTrade.isGrouped,
+                groupCount: baseTrade.groupCount,
                 positions: positions,
 
                 // Times
-                openTimeBRT: detectedTrade.timeBRT,
-                closeTimeBRT: detectedTrade.timeBRT, // Same for now (we don't have close time from Funding data)
-                openTimeUTC: detectedTrade.timeUTC,
-                closeTimeUTC: detectedTrade.timeUTC,
-                openHourBRT: detectedTrade.openHourBRT,
-                openHourRange: getHourRange(detectedTrade.openHourBRT),
-                openDayOfWeek: getDayOfWeek(new Date(detectedTrade.timeBRT)),
+                openTimeBRT: baseTrade.timeBRT,
+                closeTimeBRT: baseTrade.timeBRT, // Same for now (we don't have close time from Funding data)
+                openTimeUTC: baseTrade.timeUTC,
+                closeTimeUTC: baseTrade.timeUTC,
+                openHourBRT: baseTrade.openHourBRT,
+                openHourRange: getHourRange(baseTrade.openHourBRT),
+                openDayOfWeek: getDayOfWeek(new Date(baseTrade.timeBRT)),
                 duration: 'N/A', // Not available in Funding data
                 durationMinutes: 0,
 
                 // Trade data
-                symbol: detectedTrade.symbol,
-                type: detectedTrade.type,
-                entry: detectedTrade.entry,
-                exitPrice: detectedTrade.exit,
+                symbol: baseTrade.symbol,
+                type: baseTrade.type,
+                entry: baseTrade.entry,
+                exitPrice: baseTrade.exit,
                 stopLoss: parseFloat(stopLoss.toFixed(2)),
                 takeProfit: takeProfit,
-                volume: detectedTrade.volume,
+                volume: baseTrade.volume,
 
                 // Risk and results
                 riskPlanned: riskPlanned,
@@ -1752,26 +1772,54 @@
         }
 
         function generateOutputs(trade) {
-            // Generate Telegram template with ALL observations
-            const resultSign = trade.result >= 0 ? '+' : '';
-            const deviationSign = trade.riskDeviation >= 0 ? '+' : '';
-            const deviationPercent = ((trade.riskDeviation / trade.riskPlanned) * 100).toFixed(1);
-            const rSign = trade.rExecuted >= 0 ? '+' : '';
+            console.log('📊 generateOutputs called with trade:', trade);
+            
+            // Validate required fields
+            if (!trade.symbol || !trade.entry || !trade.exit || trade.pnl === undefined) {
+                console.error('❌ generateOutputs: Missing required fields', trade);
+                alert('Error: Datos del trade incompletos. No se pueden generar exports.');
+                return;
+            }
+            
+            // Handle both property name variations
+            const result = trade.result || trade.pnl || 0;
+            const exitPrice = trade.exitPrice || trade.exit || 0;
+            const entryPrice = trade.entry || 0;
+            const rExecuted = trade.rExecuted || trade.rReal || 0;
+            
+            const resultSign = result >= 0 ? '+' : '';
+            const rSign = rExecuted >= 0 ? '+' : '';
+            
+            // Calculate deviation if exists
+            let deviationPercent = 0;
+            let deviationSign = '';
+            if (trade.riskPlanned && trade.riskExecuted) {
+                const deviation = trade.riskExecuted - trade.riskPlanned;
+                deviationPercent = ((deviation / trade.riskPlanned) * 100).toFixed(1);
+                deviationSign = deviation >= 0 ? '+' : '';
+            }
 
             // Build Telegram template
-            let telegram = `🔹 Trade #${trade.tradeNumber} - ${trade.symbol}\n`;
+            let telegram = `🔹 Trade #${trade.tradeNumber || 1} - ${trade.symbol}\n`;
             telegram += `${trade.type === 'LONG' ? '📈 LONG' : '📉 SHORT'}\n\n`;
-            telegram += `Entry: ${trade.entry.toFixed(2)}\n`;
-            telegram += `Exit: ${trade.exitPrice.toFixed(2)}\n`;
-            telegram += `Stop: ${trade.stopLoss.toFixed(2)}${trade.takeProfit ? ' | TP: ' + trade.takeProfit.toFixed(2) : ''}\n\n`;
-            telegram += `Volume: ${trade.volume}\n`;
-            telegram += `Result: ${resultSign}$${Math.abs(trade.result).toFixed(2)}\n`;
-            telegram += `R Real: ${rSign}${trade.rExecuted.toFixed(2)}R\n`;
+            telegram += `Entry: ${entryPrice.toFixed(2)}\n`;
+            telegram += `Exit: ${exitPrice.toFixed(2)}\n`;
+            telegram += `Stop: ${(trade.stopLoss || 0).toFixed(2)}`;
+            if (trade.takeProfit) {
+                telegram += ` | TP: ${trade.takeProfit.toFixed(2)}`;
+            }
+            telegram += `\n\n`;
+            telegram += `Volume: ${trade.volume || 0}\n`;
+            telegram += `Result: ${resultSign}$${Math.abs(result).toFixed(2)}\n`;
+            
+            if (rExecuted !== 0) {
+                telegram += `R Real: ${rSign}${Math.abs(rExecuted).toFixed(2)}R\n`;
+            }
 
             // Risk planned and deviation
             if (trade.riskPlanned) {
                 telegram += `\n(Planeado: $${trade.riskPlanned.toFixed(2)}`;
-                if (trade.riskDeviation !== undefined) {
+                if (trade.riskExecuted) {
                     const devSymbol = Math.abs(deviationPercent) <= 10 ? '✓' : '⚠️';
                     telegram += ` | Desviación: ${deviationSign}${deviationPercent}% ${devSymbol}`;
                 }
@@ -1819,21 +1867,25 @@
                 telegram += `\n`;
             }
 
-            // Daily limits info (fetch from localStorage)
+            // Daily limits info
             const todayKey = new Date().toISOString().split('T')[0];
             const limitsData = JSON.parse(localStorage.getItem(`limits-${todayKey}`) || '{}');
             const maxLoss = limitsData.maxDailyLoss ? `$${limitsData.maxDailyLoss}` : '---';
             const maxTrades = limitsData.maxTrades || '---';
 
-            // Count today's trades (need to call async, but we'll use a synchronous approach)
-            const tradesCountText = trade.tradeNumber || '1';
-
             telegram += `Max Loss respetado: ${maxLoss}\n`;
-            telegram += `Trades ejecutados: ${tradesCountText} / ${maxTrades}`;
+            telegram += `Trades ejecutados: ${trade.tradeNumber || 1} / ${maxTrades}`;
 
-            document.getElementById('telegram-output').textContent = telegram;
+            // Set telegram output
+            const telegramOutput = document.getElementById('telegram-output');
+            if (telegramOutput) {
+                telegramOutput.textContent = telegram;
+                console.log('✅ Telegram template set');
+            } else {
+                console.error('❌ telegram-output element not found');
+            }
 
-            // CSV line with ALL fields - escape commas and newlines
+            // Generate CSV line
             const escape = (text) => {
                 if (!text) return '';
                 return String(text)
@@ -1843,32 +1895,47 @@
                     .trim();
             };
 
-            const csv = [
-                trade.tradeNumber,
+            // Handle orderIDs - can be array or string
+            const orderIDsStr = Array.isArray(trade.orderIDs) 
+                ? trade.orderIDs.join(';') 
+                : (trade.orderIDs || trade.orderID || '');
+
+            const csvFields = [
+                trade.tradeNumber || 1,
                 trade.block || 1,
-                trade.orderIDs.join(';'),
-                trade.symbol,
-                trade.type,
-                trade.entry.toFixed(2),
-                trade.exitPrice.toFixed(2),
-                trade.volume,
-                trade.result.toFixed(2),
-                trade.stopLoss.toFixed(2),
-                trade.takeProfit ? trade.takeProfit.toFixed(2) : '',
-                trade.riskPlanned ? trade.riskPlanned.toFixed(2) : '',
-                trade.riskExecuted ? trade.riskExecuted.toFixed(2) : '',
-                trade.rExecuted ? trade.rExecuted.toFixed(2) : '',
+                orderIDsStr,
+                trade.symbol || '',
+                trade.type || '',
+                entryPrice.toFixed(2),
+                exitPrice.toFixed(2),
+                trade.volume || 0,
+                result.toFixed(2),
+                (trade.stopLoss || 0).toFixed(2),
+                (trade.takeProfit || 0).toFixed(2),
+                (trade.riskPlanned || 0).toFixed(2),
+                (trade.riskExecuted || 0).toFixed(2),
+                rExecuted.toFixed(2),
                 escape(trade.item || ''),
                 trade.followedPlan ? 'Yes' : 'No',
                 trade.brokeRules ? 'Yes' : 'No',
                 escape(trade.observation || ''),
                 escape(trade.whatWentWell || ''),
                 escape(trade.whatWentWrong || ''),
-                trade.openTimeBRT || '',
-                trade.createdAt || new Date().toISOString()
-            ].join(',');
+                trade.timeBRT || new Date().toISOString(),
+                new Date().toISOString()
+            ];
 
-            document.getElementById('csv-output').textContent = csv;
+            const csvLine = csvFields.join(',');
+            
+            const csvOutput = document.getElementById('csv-output');
+            if (csvOutput) {
+                csvOutput.textContent = csvLine;
+                console.log('✅ CSV line set');
+            } else {
+                console.error('❌ csv-output element not found');
+            }
+
+            console.log('✅ generateOutputs completed');
         }
 
         // ==========================================
@@ -2505,30 +2572,19 @@
                     return;
                 }
 
+                // Set as currentTrade globally so handleTradeSubmit can use it
+                window.currentTrade = parsed[0];  // First parsed position
+
+                console.log('✅ currentTrade set:', window.currentTrade);
+
                 const position = parsed[0];
 
                 // Close complete modal
                 closeCompleteModal();
 
                 // Create a trade object for Step 3 (similar to detection result)
-                currentTrade = {
-                    orderID: position.orderID || quickAdd.orderID,
-                    symbol: position.symbol,
-                    type: position.type,
-                    entry: position.entry,
-                    exit: position.exit,
-                    volume: position.volume,
-                    pnl: position.pnl,
-                    timeBRT: position.timeBRT,
-                    openHourBRT: position.openHourBRT,
-                    isGrouped: false,
-                    positions: [{
-                        entryPrice: position.entry,
-                        exitPrice: position.exit,
-                        volume: position.volume,
-                        pnl: position.pnl
-                    }]
-                };
+                // Use window.currentTrade which was set from parsed[0]
+                currentTrade = window.currentTrade;
 
                 // Store Quick Add info for later update
                 window.currentQuickAddCompletion = {
@@ -2544,6 +2600,7 @@
 
                 // Pre-fill form with parsed data
                 document.getElementById('trade-number').value = nextTradeNumber;
+                document.getElementById('block').value = '1';
                 document.getElementById('trade-number-hint').textContent = `Sugerido: ${nextTradeNumber} (completando Quick Add)`;
 
                 // Pre-fill Take Profit with exit price
@@ -2553,6 +2610,52 @@
 
                 // Render stop loss inputs
                 renderStopLossInputs();
+
+                // Show trade header in Step 3
+                const tradeHeaderHTML = `
+                    <div class="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xl font-bold text-blue-900">${window.currentTrade.symbol} ${window.currentTrade.type || 'LONG'}</h3>
+                            <span class="text-2xl font-bold ${window.currentTrade.pnl >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                ${window.currentTrade.pnl >= 0 ? '+' : ''}$${window.currentTrade.pnl.toFixed(2)}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-4 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-600">Entry</span>
+                                <div class="font-bold">${window.currentTrade.entry.toFixed(2)}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Exit</span>
+                                <div class="font-bold">${window.currentTrade.exit.toFixed(2)}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Volume</span>
+                                <div class="font-bold">${window.currentTrade.volume}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Time (BRT)</span>
+                                <div class="font-bold">${window.currentTrade.timeBRT || '--:--'}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Insert header at top of Step 3
+                const step3Container = document.getElementById('step-3');
+                const formElement = step3Container.querySelector('form');
+                if (formElement) {
+                    // Check if header already exists
+                    const existingHeader = step3Container.querySelector('.trade-header-quick-add');
+                    if (existingHeader) {
+                        existingHeader.remove();
+                    }
+                    
+                    const headerDiv = document.createElement('div');
+                    headerDiv.className = 'trade-header-quick-add';
+                    headerDiv.innerHTML = tradeHeaderHTML;
+                    formElement.insertBefore(headerDiv, formElement.firstChild);
+                }
 
                 // Show step 3
                 document.getElementById('step-1').classList.add('hidden');
