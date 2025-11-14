@@ -179,26 +179,38 @@ const StorageManager = {
             });
 
             const todayTrades = allTrades.trades.filter(trade => {
-                const tradeDate = new Date(trade.timestamp);
-                const isToday = tradeDate >= today && tradeDate < tomorrow;
-
-                if (!isToday) {
-                    console.log('  ❌ Trade NOT today:', {
-                        orderID: trade.orderID || trade.symbol,
-                        timestamp: trade.timestamp,
-                        tradeDate: tradeDate.toISOString()
+                // VALIDAR que timestamp existe
+                if (!trade.timestamp) {
+                    console.warn('⚠️ Trade sin timestamp:', {
+                        orderID: trade.orderID,
+                        symbol: trade.symbol
                     });
+                    return false;
                 }
+
+                // VALIDAR que se puede crear Date válido
+                const tradeDate = new Date(trade.timestamp);
+
+                if (isNaN(tradeDate.getTime())) {
+                    console.warn('⚠️ Trade con timestamp inválido:', {
+                        orderID: trade.orderID,
+                        timestamp: trade.timestamp
+                    });
+                    return false;
+                }
+
+                // Verificar si es de hoy
+                const isToday = tradeDate >= today && tradeDate < tomorrow;
 
                 return isToday;
             });
 
-            console.log('📊 Trades de hoy encontrados:', todayTrades.length);
+            console.log('✅ Trades de hoy encontrados:', todayTrades.length);
 
             return todayTrades;
 
         } catch (error) {
-            console.error('Error getting today trades:', error);
+            console.error('❌ Error en getTodayTrades:', error);
             return [];
         }
     },

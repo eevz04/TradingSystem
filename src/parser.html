@@ -349,11 +349,31 @@
                             <!-- Observation -->
                             <div>
                                 <label for="observation" class="block text-sm font-medium text-slate-700 mb-2">
-                                    Observación
+                                    💭 Observaciones Generales
                                 </label>
                                 <textarea id="observation" name="observation" rows="3"
-                                    placeholder="Notas sobre el trade: emociones, ejecución, lo que aprendiste..."
+                                    placeholder="Notas sobre el trade, contexto del mercado, emociones..."
                                     class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-primary focus:border-transparent resize-none"></textarea>
+                            </div>
+
+                            <!-- What Went Well -->
+                            <div>
+                                <label for="what-went-well" class="block text-sm font-bold text-green-700 mb-2">
+                                    ✅ ¿Qué salió bien?
+                                </label>
+                                <textarea id="what-went-well" name="whatWentWell" rows="3"
+                                    placeholder="Aspectos positivos de la ejecución del trade..."
+                                    class="w-full px-4 py-2 border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"></textarea>
+                            </div>
+
+                            <!-- What Went Wrong -->
+                            <div>
+                                <label for="what-went-wrong" class="block text-sm font-bold text-red-700 mb-2">
+                                    ❌ ¿Qué salió mal?
+                                </label>
+                                <textarea id="what-went-wrong" name="whatWentWrong" rows="3"
+                                    placeholder="Errores cometidos, áreas de mejora..."
+                                    class="w-full px-4 py-2 border-2 border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"></textarea>
                             </div>
 
                             <!-- Plan Compliance -->
@@ -1575,6 +1595,8 @@
                 // Metadata
                 item: formData.get('item') || '',
                 observation: formData.get('observation') || '',
+                whatWentWell: formData.get('whatWentWell') || '',
+                whatWentWrong: formData.get('whatWentWrong') || '',
                 followedPlan: formData.get('followedPlan') === 'on',
                 brokeRules: formData.get('brokeRules') === 'on',
                 rulesViolated: rulesViolated,
@@ -1717,89 +1739,120 @@
         }
 
         function generateOutputs(trade) {
-            // Generate Telegram template
+            // Generate Telegram template with ALL observations
+            const resultSign = trade.result >= 0 ? '+' : '';
             const deviationSign = trade.riskDeviation >= 0 ? '+' : '';
             const deviationPercent = ((trade.riskDeviation / trade.riskPlanned) * 100).toFixed(1);
+            const rSign = trade.rExecuted >= 0 ? '+' : '';
 
-            let telegram;
+            // Build Telegram template
+            let telegram = `🔹 Trade #${trade.tradeNumber} - ${trade.symbol}\n`;
+            telegram += `${trade.type === 'LONG' ? '📈 LONG' : '📉 SHORT'}\n\n`;
+            telegram += `Entry: ${trade.entry.toFixed(2)}\n`;
+            telegram += `Exit: ${trade.exitPrice.toFixed(2)}\n`;
+            telegram += `Stop: ${trade.stopLoss.toFixed(2)}${trade.takeProfit ? ' | TP: ' + trade.takeProfit.toFixed(2) : ''}\n\n`;
+            telegram += `Volume: ${trade.volume}\n`;
+            telegram += `Result: ${resultSign}$${Math.abs(trade.result).toFixed(2)}\n`;
+            telegram += `R Real: ${rSign}${trade.rExecuted.toFixed(2)}R\n`;
 
-            if (trade.isGrouped) {
-                // Template for grouped trade
-                const positionsText = trade.positions.map(p =>
-                    `├─ ${p.entryPrice} (SL: ${p.stopLoss}) Vol: ${p.volume} → ${p.pnl >= 0 ? '+' : ''}$${p.pnl.toFixed(2)}`
-                ).join('\n');
-
-                telegram = `
-🔹 Trade #${trade.tradeNumber} - ${trade.symbol}
-${trade.type === 'LONG' ? '📈 LONG' : '📉 SHORT'} (${trade.groupCount} posiciones)
-
-Avg Entry: ${trade.entry.toFixed(2)}
-Avg Exit: ${trade.exitPrice.toFixed(2)}
-Stop: ${trade.stopLoss.toFixed(2)}${trade.takeProfit ? ' | TP: ' + trade.takeProfit.toFixed(2) : ''}
-
-Posiciones:
-${positionsText}
-
-Riesgo Ejecutado: $${trade.riskExecuted.toFixed(2)}
-Total Volume: ${trade.volume}
-Result: ${trade.result >= 0 ? '+' : ''}$${trade.result.toFixed(2)}
-R Real: ${trade.rExecuted >= 0 ? '+' : ''}${trade.rExecuted.toFixed(2)}R
-
-(Planeado: $${trade.riskPlanned.toFixed(2)} | Desviación: ${deviationSign}${deviationPercent}% ${trade.riskDeviationFlag})
-
-${trade.item ? `Setup: ${trade.item}` : ''}
-${trade.observation ? `\nNotes: ${trade.observation}` : ''}
-                `.trim();
-            } else {
-                // Template for simple trade
-                telegram = `
-🔹 Trade #${trade.tradeNumber} - ${trade.symbol}
-${trade.type === 'LONG' ? '📈 LONG' : '📉 SHORT'}
-
-Entry: ${trade.entry.toFixed(2)}
-Exit: ${trade.exitPrice.toFixed(2)}
-SL: ${trade.stopLoss.toFixed(2)}${trade.takeProfit ? ' | TP: ' + trade.takeProfit.toFixed(2) : ''}
-
-Riesgo Ejecutado: $${trade.riskExecuted.toFixed(2)}
-Volume: ${trade.volume}
-Result: ${trade.result >= 0 ? '+' : ''}$${trade.result.toFixed(2)}
-R Real: ${trade.rExecuted >= 0 ? '+' : ''}${trade.rExecuted.toFixed(2)}R
-
-(Planeado: $${trade.riskPlanned.toFixed(2)} | Desviación: ${deviationSign}${deviationPercent}% ${trade.riskDeviationFlag})
-
-${trade.item ? `Setup: ${trade.item}` : ''}
-${trade.observation ? `\nNotes: ${trade.observation}` : ''}
-                `.trim();
+            // Risk planned and deviation
+            if (trade.riskPlanned) {
+                telegram += `\n(Planeado: $${trade.riskPlanned.toFixed(2)}`;
+                if (trade.riskDeviation !== undefined) {
+                    const devSymbol = Math.abs(deviationPercent) <= 10 ? '✓' : '⚠️';
+                    telegram += ` | Desviación: ${deviationSign}${deviationPercent}% ${devSymbol}`;
+                }
+                telegram += ')\n';
             }
+
+            // Setup/Item
+            if (trade.item && trade.item.trim()) {
+                telegram += `\n📋 Setup: ${trade.item}\n`;
+            }
+
+            // General observations
+            if (trade.observation && trade.observation.trim()) {
+                telegram += `\n💭 Observaciones:\n${trade.observation}\n`;
+            }
+
+            // What went well
+            if (trade.whatWentWell && trade.whatWentWell.trim()) {
+                telegram += `\n✅ Lo que salió bien:\n`;
+                const wellPoints = trade.whatWentWell.split('\n').filter(p => p.trim());
+                wellPoints.forEach(point => {
+                    telegram += `- ${point.trim()}\n`;
+                });
+            }
+
+            // What went wrong
+            if (trade.whatWentWrong && trade.whatWentWrong.trim()) {
+                telegram += `\n❌ Lo que salió mal:\n`;
+                const wrongPoints = trade.whatWentWrong.split('\n').filter(p => p.trim());
+                wrongPoints.forEach(point => {
+                    telegram += `- ${point.trim()}\n`;
+                });
+            }
+
+            // Plan compliance
+            telegram += `\n📊 Cumplimiento:\n`;
+            if (trade.followedPlan) {
+                telegram += `✅ Seguí el plan\n`;
+            }
+            if (trade.brokeRules) {
+                telegram += `❌ Rompí reglas`;
+                if (trade.rulesViolated && trade.rulesViolated.length > 0) {
+                    telegram += `: ${trade.rulesViolated.join(', ')}`;
+                }
+                telegram += `\n`;
+            }
+
+            // Daily limits info (fetch from localStorage)
+            const todayKey = new Date().toISOString().split('T')[0];
+            const limitsData = JSON.parse(localStorage.getItem(`limits-${todayKey}`) || '{}');
+            const maxLoss = limitsData.maxDailyLoss ? `$${limitsData.maxDailyLoss}` : '---';
+            const maxTrades = limitsData.maxTrades || '---';
+
+            // Count today's trades (need to call async, but we'll use a synchronous approach)
+            const tradesCountText = trade.tradeNumber || '1';
+
+            telegram += `Max Loss respetado: ${maxLoss}\n`;
+            telegram += `Trades ejecutados: ${tradesCountText} / ${maxTrades}`;
 
             document.getElementById('telegram-output').textContent = telegram;
 
-            // CSV line
+            // CSV line with ALL fields - escape commas and newlines
+            const escape = (text) => {
+                if (!text) return '';
+                return String(text)
+                    .replace(/,/g, ';')
+                    .replace(/\n/g, ' ')
+                    .replace(/\r/g, '')
+                    .trim();
+            };
+
             const csv = [
                 trade.tradeNumber,
-                trade.block,
+                trade.block || 1,
                 trade.orderIDs.join(';'),
-                trade.isGrouped,
-                trade.groupCount,
                 trade.symbol,
                 trade.type,
                 trade.entry.toFixed(2),
                 trade.exitPrice.toFixed(2),
+                trade.volume,
+                trade.result.toFixed(2),
                 trade.stopLoss.toFixed(2),
                 trade.takeProfit ? trade.takeProfit.toFixed(2) : '',
-                trade.volume,
-                trade.riskPlanned.toFixed(2),
-                trade.riskExecuted.toFixed(2),
-                trade.riskDeviation.toFixed(2),
-                trade.result.toFixed(2),
-                trade.rPlanned.toFixed(2),
-                trade.rExecuted.toFixed(2),
-                trade.openTimeBRT,
-                trade.duration || 'N/A',
-                trade.item || '',
-                trade.observation || '',
+                trade.riskPlanned ? trade.riskPlanned.toFixed(2) : '',
+                trade.riskExecuted ? trade.riskExecuted.toFixed(2) : '',
+                trade.rExecuted ? trade.rExecuted.toFixed(2) : '',
+                escape(trade.item || ''),
                 trade.followedPlan ? 'Yes' : 'No',
-                trade.brokeRules ? 'Yes' : 'No'
+                trade.brokeRules ? 'Yes' : 'No',
+                escape(trade.observation || ''),
+                escape(trade.whatWentWell || ''),
+                escape(trade.whatWentWrong || ''),
+                trade.openTimeBRT || '',
+                trade.createdAt || new Date().toISOString()
             ].join(',');
 
             document.getElementById('csv-output').textContent = csv;
