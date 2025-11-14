@@ -408,10 +408,35 @@
         /* Table smooth transitions */
         table tbody tr {
             transition: background-color 0.15s ease, transform 0.15s ease;
+            cursor: pointer;
         }
 
         table tbody tr:hover {
             transform: scale(1.001);
+        }
+
+        /* Expanded row styling */
+        .expanded-row {
+            background: transparent !important;
+        }
+
+        .expanded-row:hover {
+            background: transparent !important;
+        }
+
+        .expanded-panel {
+            animation: slideDown 0.2s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
@@ -828,6 +853,7 @@
         const DashboardApp = {
             trades: [],
             currentView: 'table',
+            expandedTradeId: null,
 
             // ─────────────────────────────────────────────────────
             // INITIALIZATION
@@ -913,6 +939,21 @@
                     default:
                         console.warn(`Unknown view: ${viewId}`);
                 }
+            },
+
+            // ─────────────────────────────────────────────────────
+            // TOGGLE EXPAND ROW
+            // ─────────────────────────────────────────────────────
+            toggleExpandRow(tradeId) {
+                console.log('🔄 Toggle expand for trade:', tradeId);
+
+                if (this.expandedTradeId === tradeId) {
+                    this.expandedTradeId = null; // Collapse
+                } else {
+                    this.expandedTradeId = tradeId; // Expand
+                }
+
+                this.renderTableView(); // Re-render table
             },
 
             // ─────────────────────────────────────────────────────
@@ -1042,9 +1083,13 @@
                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                     : 'bg-red-500/15 text-red-400 border-red-500/30';
 
+                // Check if this row is expanded
+                const isExpanded = this.expandedTradeId === trade.tradeNumber;
+
                 return `
                     <tr class="border-b border-white/5 hover:bg-white/[0.02] transition-all duration-150 cursor-pointer group"
-                        data-trade-id="${trade.orderID || trade.tradeNumber}">
+                        onclick="DashboardApp.toggleExpandRow(${trade.tradeNumber})"
+                        data-trade-id="${trade.tradeNumber}">
 
                         <td class="py-4 px-6 text-sm font-bold group-hover:text-blue-400 transition-colors">
                             ${trade.tradeNumber || '-'}
@@ -1078,6 +1123,79 @@
 
                         <td class="py-4 px-6 text-sm text-right font-mono font-bold ${rColor}">
                             ${rSign}${Math.abs(rReal).toFixed(2)}R
+                        </td>
+                    </tr>
+
+                    ${isExpanded ? this.renderExpandedContent(trade) : ''}
+                `;
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER EXPANDED CONTENT
+            // ─────────────────────────────────────────────────────
+            renderExpandedContent(trade) {
+                return `
+                    <tr class="expanded-row">
+                        <td colspan="8" class="p-0">
+                            <div class="expanded-panel" style="background: rgba(255,255,255,0.02); border-top: 1px solid rgba(255,255,255,0.05);">
+                                <div class="p-6 space-y-4">
+
+                                    <!-- Observaciones Generales -->
+                                    ${trade.observation ? `
+                                        <div>
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <i data-lucide="message-square" class="w-4 h-4 opacity-60"></i>
+                                                <h4 class="text-sm font-bold uppercase tracking-wide opacity-60">Observaciones</h4>
+                                            </div>
+                                            <p class="text-sm opacity-80 pl-6">${trade.observation}</p>
+                                        </div>
+                                    ` : ''}
+
+                                    <!-- Lo que salió bien -->
+                                    ${trade.whatWentWell ? `
+                                        <div>
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+                                                <h4 class="text-sm font-bold uppercase tracking-wide text-emerald-400">Lo que salió bien</h4>
+                                            </div>
+                                            <p class="text-sm opacity-80 pl-6">${trade.whatWentWell}</p>
+                                        </div>
+                                    ` : ''}
+
+                                    <!-- Lo que salió mal -->
+                                    ${trade.whatWentWrong ? `
+                                        <div>
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <i data-lucide="alert-circle" class="w-4 h-4 text-red-400"></i>
+                                                <h4 class="text-sm font-bold uppercase tracking-wide text-red-400">Lo que salió mal</h4>
+                                            </div>
+                                            <p class="text-sm opacity-80 pl-6">${trade.whatWentWrong}</p>
+                                        </div>
+                                    ` : ''}
+
+                                    <!-- Reglas violadas -->
+                                    ${trade.brokeRules && trade.rulesViolated?.length > 0 ? `
+                                        <div>
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i>
+                                                <h4 class="text-sm font-bold uppercase tracking-wide text-amber-400">Reglas Violadas</h4>
+                                            </div>
+                                            <ul class="text-sm opacity-80 pl-6 list-disc list-inside">
+                                                ${trade.rulesViolated.map(rule => `<li>${rule}</li>`).join('')}
+                                            </ul>
+                                        </div>
+                                    ` : ''}
+
+                                    <!-- Botón Editar (placeholder) -->
+                                    <div class="pt-4 border-t border-white/5">
+                                        <button class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium transition-all border border-blue-500/30">
+                                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                            Editar Observaciones
+                                        </button>
+                                    </div>
+
+                                </div>
+                            </div>
                         </td>
                     </tr>
                 `;
