@@ -202,10 +202,24 @@ const StorageManager = {
                 // Verificar si es de hoy
                 const isToday = tradeDate >= today && tradeDate < tomorrow;
 
+                // DEBUG: Mostrar TODOS los trades con sus fechas
+                console.log('Trade check:', {
+                    orderID: trade.orderID,
+                    symbol: trade.symbol,
+                    timestamp: trade.timestamp,
+                    tradeDate: tradeDate.toISOString(),
+                    isToday: isToday
+                });
+
                 return isToday;
             });
 
             console.log('✅ Trades de hoy encontrados:', todayTrades.length);
+            console.log('✅ Trades de hoy:', todayTrades.map(t => ({
+                symbol: t.symbol,
+                pnl: t.pnl,
+                timestamp: t.timestamp
+            })));
 
             return todayTrades;
 

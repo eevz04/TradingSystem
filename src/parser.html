@@ -1463,14 +1463,25 @@
                     throw new Error(saveResult.error);
                 }
 
+                console.log('✅ Trade saved successfully, generating exports...');
+
                 // Generate outputs
                 generateOutputs(completeTrade);
+
+                console.log('✅ Exports generated, showing step 4...');
 
                 // Show success step
                 updateStepIndicator(4);
                 document.getElementById('step-3').classList.add('hidden');
                 document.getElementById('step-4').classList.remove('hidden');
-                document.getElementById('step-4').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                console.log('✅ Step 4 is now visible');
+
+                // Scroll to step 4
+                const step4Element = document.getElementById('step-4');
+                step4Element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                console.log('✅ Scrolled to step 4');
 
                 showMessage('✅ Trade guardado exitosamente', 'success');
 
@@ -1963,6 +1974,29 @@
             const text = element.textContent;
 
             navigator.clipboard.writeText(text).then(() => {
+                // Find the button that triggered this (search for button near the element)
+                const button = element.parentElement.querySelector('button[onclick*="copyToClipboard"]');
+                if (button) {
+                    const originalText = button.innerHTML;
+                    const originalClasses = button.className;
+
+                    // Change button to show success
+                    if (elementId === 'telegram-output') {
+                        button.innerHTML = '✅ Telegram Copiado!';
+                    } else if (elementId === 'csv-output') {
+                        button.innerHTML = '✅ CSV Copiado!';
+                    } else {
+                        button.innerHTML = '✅ Copiado!';
+                    }
+                    button.className = 'mt-2 px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium transition-all';
+
+                    // Reset after 2.5 seconds
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.className = originalClasses;
+                    }, 2500);
+                }
+
                 showMessage('✅ Copiado al portapapeles', 'success');
             }).catch(err => {
                 showMessage('❌ Error copiando: ' + err, 'error');
