@@ -725,6 +725,9 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
     <!-- Storage Manager -->
     <script src="storage.js"></script>
 
@@ -889,6 +892,7 @@
             currentView: 'table',
             expandedTradeId: null,
             editingTradeId: null,
+            equityCurveChart: null,
 
             // ─────────────────────────────────────────────────────
             // INITIALIZATION
@@ -995,6 +999,137 @@
                     winners: winners.length,
                     losers: losers.length
                 };
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER EQUITY CURVE
+            // ─────────────────────────────────────────────────────
+            renderEquityCurve() {
+                if (this.trades.length === 0) {
+                    console.log('⚠️ No trades to render equity curve');
+                    return;
+                }
+
+                console.log('📈 Rendering equity curve...');
+
+                // Destroy previous chart instance if exists
+                if (this.equityCurveChart) {
+                    this.equityCurveChart.destroy();
+                    this.equityCurveChart = null;
+                }
+
+                // Sort trades by timestamp (oldest first)
+                const sortedTrades = [...this.trades].sort((a, b) => {
+                    const dateA = new Date(a.timestamp || a.createdAt || 0);
+                    const dateB = new Date(b.timestamp || b.createdAt || 0);
+                    return dateA - dateB; // oldest first
+                });
+
+                // Calculate cumulative P&L
+                let cumulativePnL = 0;
+                const labels = [];
+                const data = [];
+
+                sortedTrades.forEach((trade, index) => {
+                    const pnl = trade.pnl || trade.result || 0;
+                    cumulativePnL += pnl;
+
+                    // Label: Trade number
+                    labels.push(`#${trade.tradeNumber || index + 1}`);
+                    data.push(cumulativePnL);
+                });
+
+                // Get canvas element
+                const canvas = document.getElementById('equityCurveChart');
+                if (!canvas) {
+                    console.error('❌ Canvas element not found');
+                    return;
+                }
+
+                const ctx = canvas.getContext('2d');
+
+                // Determine line color based on final P&L
+                const finalPnL = data[data.length - 1] || 0;
+                const lineColor = finalPnL >= 0 ? 'rgb(52, 211, 153)' : 'rgb(248, 113, 113)'; // emerald-400 or red-400
+
+                // Create chart
+                this.equityCurveChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Cumulative P&L',
+                            data: data,
+                            borderColor: lineColor,
+                            backgroundColor: finalPnL >= 0
+                                ? 'rgba(52, 211, 153, 0.1)'
+                                : 'rgba(248, 113, 113, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4, // smooth curve
+                            fill: true,
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: lineColor,
+                            pointBorderColor: lineColor
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false // no legend
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: 'rgba(255, 255, 255, 0.2)',
+                                borderWidth: 1,
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.parsed.y;
+                                        const sign = value >= 0 ? '+' : '';
+                                        return `${sign}$${value.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.05)',
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: 'rgba(255, 255, 255, 0.6)',
+                                    maxRotation: 45,
+                                    minRotation: 0
+                                }
+                            },
+                            y: {
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.05)',
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: 'rgba(255, 255, 255, 0.6)',
+                                    callback: function(value) {
+                                        const sign = value >= 0 ? '+' : '';
+                                        return `${sign}$${value.toFixed(0)}`;
+                                    }
+                                }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+
+                console.log('✅ Equity curve rendered');
             },
 
             // ─────────────────────────────────────────────────────
@@ -1302,6 +1437,18 @@
                     </div>
                 ` : '';
 
+                // ─── EQUITY CURVE HTML ───
+                const equityCurveHTML = this.trades.length > 0 ? `
+                    <!-- Equity Curve -->
+                    <div class="rounded-2xl p-6 mb-6 border border-white/10"
+                         style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                        <h3 class="text-xl font-bold mb-4">Equity Curve</h3>
+                        <div style="height: 300px; position: relative;">
+                            <canvas id="equityCurveChart"></canvas>
+                        </div>
+                    </div>
+                ` : '';
+
                 // ─── SORT TRADES (most recent first) ───
                 const sorted = [...this.trades].sort((a, b) => {
                     const dateA = new Date(a.timestamp || a.createdAt || 0);
@@ -1362,10 +1509,18 @@
                     </div>
                 `;
 
-                container.innerHTML = metricsHTML + tableHTML;
+                container.innerHTML = metricsHTML + equityCurveHTML + tableHTML;
 
                 // Reinitialize Lucide icons
                 lucide.createIcons();
+
+                // Render equity curve if we have trades
+                if (this.trades.length > 0) {
+                    // Need to wait for DOM to be ready
+                    setTimeout(() => {
+                        this.renderEquityCurve();
+                    }, 100);
+                }
 
                 console.log(`✅ Table rendered with ${sorted.length} trades`);
             },
