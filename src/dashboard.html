@@ -79,10 +79,10 @@
         /* Smooth transitions */
         * {
             transition: background-color 0.2s ease,
-                        border-color 0.2s ease,
-                        color 0.2s ease,
-                        transform 0.2s ease,
-                        box-shadow 0.2s ease;
+                border-color 0.2s ease,
+                color 0.2s ease,
+                transform 0.2s ease,
+                box-shadow 0.2s ease;
         }
 
         /* Glassmorphism base */
@@ -157,10 +157,13 @@
 
         /* Sync status pulse */
         @keyframes pulse-dot {
-            0%, 100% {
+
+            0%,
+            100% {
                 opacity: 1;
                 transform: scale(1);
             }
+
             50% {
                 opacity: 0.7;
                 transform: scale(1.1);
@@ -234,8 +237,8 @@
         }
 
         /* IMPORTANTE: El nav dentro del sidebar NO debe tener background */
-        #sidebar > nav,
-        aside#sidebar > nav {
+        #sidebar>nav,
+        aside#sidebar>nav {
             background: transparent !important;
             background-color: transparent !important;
             background-image: none !important;
@@ -433,6 +436,7 @@
                 opacity: 0;
                 transform: translateY(-10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -444,13 +448,18 @@
             animation: fadeIn 0.2s ease-out;
         }
 
-        #editModal > div {
+        #editModal>div {
             animation: slideUp 0.3s ease-out;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         @keyframes slideUp {
@@ -458,6 +467,7 @@
                 opacity: 0;
                 transform: translateY(20px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -476,7 +486,7 @@
 </head>
 
 <body class="min-h-screen" id="body" style="background: #0a0e17; color: #f8fafc;">
-    
+
     <!-- ============================================ -->
     <!-- HEADER (Fixed Top) -->
     <!-- ============================================ -->
@@ -496,11 +506,7 @@
                 </div>
 
                 <!-- Dark/Light Mode Toggle -->
-                <button 
-                    id="theme-toggle"
-                    class="theme-toggle"
-                    title="Toggle Dark/Light Mode"
-                >
+                <button id="theme-toggle" class="theme-toggle" title="Toggle Dark/Light Mode">
                     <i data-lucide="moon" id="theme-icon" class="w-5 h-5"></i>
                 </button>
             </div>
@@ -511,62 +517,44 @@
     <!-- MAIN LAYOUT -->
     <!-- ============================================ -->
     <div class="flex pt-16">
-        
+
         <!-- ============================================ -->
         <!-- SIDEBAR (Fixed Left) -->
         <!-- ============================================ -->
-        <aside 
-            id="sidebar"
-            class="sidebar-glass fixed left-0 top-16 bottom-0 w-[280px] overflow-y-auto hidden md:block"
-            style="background: rgba(255, 255, 255, 0.02) !important; background-color: rgba(255, 255, 255, 0.02) !important; background-image: none !important;"
-        >
+        <aside id="sidebar" class="sidebar-glass fixed left-0 top-16 bottom-0 w-[280px] overflow-y-auto hidden md:block"
+            style="background: rgba(255, 255, 255, 0.02) !important; background-color: rgba(255, 255, 255, 0.02) !important; background-image: none !important;">
             <nav class="p-6 space-y-2">
                 <!-- Vista Tabla -->
-                <button 
-                    class="sidebar-item active w-full text-left flex items-center gap-3"
-                    data-view="table"
-                    onclick="switchView('table')"
-                >
+                <button class="sidebar-item active w-full text-left flex items-center gap-3" data-view="table"
+                    onclick="switchView('table')">
                     <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
                     <span class="font-medium">Vista Tabla</span>
                 </button>
 
                 <!-- Vista Bloques -->
-                <button 
-                    class="sidebar-item w-full text-left flex items-center gap-3"
-                    data-view="blocks"
-                    onclick="switchView('blocks')"
-                >
+                <button class="sidebar-item w-full text-left flex items-center gap-3" data-view="blocks"
+                    onclick="switchView('blocks')">
                     <i data-lucide="layout-grid" class="w-5 h-5"></i>
                     <span class="font-medium">Vista Bloques</span>
                 </button>
 
                 <!-- Vista Progreso -->
-                <button 
-                    class="sidebar-item w-full text-left flex items-center gap-3"
-                    data-view="progress"
-                    onclick="switchView('progress')"
-                >
+                <button class="sidebar-item w-full text-left flex items-center gap-3" data-view="progress"
+                    onclick="switchView('progress')">
                     <i data-lucide="trending-up" class="w-5 h-5"></i>
                     <span class="font-medium">Vista Progreso</span>
                 </button>
 
                 <!-- Vista Temporal -->
-                <button 
-                    class="sidebar-item w-full text-left flex items-center gap-3"
-                    data-view="temporal"
-                    onclick="switchView('temporal')"
-                >
+                <button class="sidebar-item w-full text-left flex items-center gap-3" data-view="temporal"
+                    onclick="switchView('temporal')">
                     <i data-lucide="clock" class="w-5 h-5"></i>
                     <span class="font-medium">Vista Temporal</span>
                 </button>
 
                 <!-- Vista EV -->
-                <button 
-                    class="sidebar-item w-full text-left flex items-center gap-3"
-                    data-view="ev"
-                    onclick="switchView('ev')"
-                >
+                <button class="sidebar-item w-full text-left flex items-center gap-3" data-view="ev"
+                    onclick="switchView('ev')">
                     <i data-lucide="dice-5" class="w-5 h-5"></i>
                     <span class="font-medium">Vista EV</span>
                 </button>
@@ -575,10 +563,7 @@
                 <div class="my-4 border-t" style="border-color: rgba(255, 255, 255, 0.08);"></div>
 
                 <!-- Config -->
-                <button 
-                    class="sidebar-item w-full text-left flex items-center gap-3"
-                    onclick="openConfigModal()"
-                >
+                <button class="sidebar-item w-full text-left flex items-center gap-3" onclick="openConfigModal()">
                     <i data-lucide="settings" class="w-5 h-5"></i>
                     <span class="font-medium">Configuración</span>
                 </button>
@@ -589,7 +574,7 @@
         <!-- MAIN CONTENT -->
         <!-- ============================================ -->
         <main class="flex-1 md:ml-[280px] min-h-screen" style="background: #0a0e17;">
-            
+
             <!-- Vista Tabla -->
             <div id="view-table" class="view-container p-8">
                 <div class="max-w-7xl mx-auto">
@@ -600,7 +585,8 @@
                     <div class="glass card rounded-2xl p-12 border" style="min-height: 400px;">
                         <div class="flex flex-col items-center justify-center h-full">
                             <i data-lucide="bar-chart-3" class="placeholder-icon"></i>
-                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Tabla de trades - Próximamente</p>
+                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Tabla de trades -
+                                Próximamente</p>
                         </div>
                     </div>
                 </div>
@@ -616,7 +602,8 @@
                     <div class="glass card rounded-2xl p-12 border" style="min-height: 400px;">
                         <div class="flex flex-col items-center justify-center h-full">
                             <i data-lucide="layout-grid" class="placeholder-icon"></i>
-                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Análisis por bloques - Próximamente</p>
+                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Análisis por bloques -
+                                Próximamente</p>
                         </div>
                     </div>
                 </div>
@@ -632,7 +619,8 @@
                     <div class="glass card rounded-2xl p-12 border" style="min-height: 400px;">
                         <div class="flex flex-col items-center justify-center h-full">
                             <i data-lucide="trending-up" class="placeholder-icon"></i>
-                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Progreso continuo - Próximamente</p>
+                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Progreso continuo -
+                                Próximamente</p>
                         </div>
                     </div>
                 </div>
@@ -648,7 +636,8 @@
                     <div class="glass card rounded-2xl p-12 border" style="min-height: 400px;">
                         <div class="flex flex-col items-center justify-center h-full">
                             <i data-lucide="clock" class="placeholder-icon"></i>
-                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Análisis temporal - Próximamente</p>
+                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Análisis temporal -
+                                Próximamente</p>
                         </div>
                     </div>
                 </div>
@@ -664,7 +653,8 @@
                     <div class="glass card rounded-2xl p-12 border" style="min-height: 400px;">
                         <div class="flex flex-col items-center justify-center h-full">
                             <i data-lucide="dice-5" class="placeholder-icon"></i>
-                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Expected Value y Monte Carlo - Próximamente</p>
+                            <p class="text-center" data-theme-secondary style="font-size: 16px;">Expected Value y Monte
+                                Carlo - Próximamente</p>
                         </div>
                     </div>
                 </div>
@@ -678,15 +668,14 @@
     <!-- ============================================ -->
 
     <!-- Edit Trade Modal -->
-    <div id="edit-trade-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);">
+    <div id="edit-trade-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+        style="background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);">
         <div class="modal-glass rounded-2xl shadow-2xl max-w-2xl w-full border">
-            <div class="flex items-center justify-between p-6 border-b" style="border-color: rgba(255, 255, 255, 0.08);">
+            <div class="flex items-center justify-between p-6 border-b"
+                style="border-color: rgba(255, 255, 255, 0.08);">
                 <h3 class="text-xl font-bold" data-theme-text>Editar Trade</h3>
-                <button 
-                    onclick="closeEditTradeModal()"
-                    class="transition-colors"
-                    style="font-size: 24px; line-height: 1;"
-                >
+                <button onclick="closeEditTradeModal()" class="transition-colors"
+                    style="font-size: 24px; line-height: 1;">
                     <i data-lucide="x" class="w-6 h-6" data-theme-secondary></i>
                 </button>
             </div>
@@ -697,18 +686,16 @@
     </div>
 
     <!-- Config Modal -->
-    <div id="config-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);">
+    <div id="config-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+        style="background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);">
         <div class="modal-glass rounded-2xl shadow-2xl max-w-3xl w-full border max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between p-6 border-b" style="border-color: rgba(255, 255, 255, 0.08);">
+            <div class="flex items-center justify-between p-6 border-b"
+                style="border-color: rgba(255, 255, 255, 0.08);">
                 <div class="flex items-center gap-3">
                     <i data-lucide="settings" class="w-6 h-6" data-theme-text></i>
                     <h3 class="text-xl font-bold" data-theme-text>Configuración</h3>
                 </div>
-                <button 
-                    onclick="closeConfigModal()"
-                    class="transition-colors"
-                    style="font-size: 24px; line-height: 1;"
-                >
+                <button onclick="closeConfigModal()" class="transition-colors" style="font-size: 24px; line-height: 1;">
                     <i data-lucide="x" class="w-6 h-6" data-theme-secondary></i>
                 </button>
             </div>
@@ -721,7 +708,7 @@
     <!-- ============================================ -->
     <!-- JAVASCRIPT -->
     <!-- ============================================ -->
-    
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -745,10 +732,10 @@
             const themeIcon = document.getElementById('theme-icon');
             const html = document.documentElement;
             const main = document.querySelector('main');
-            
+
             // Set data-theme attribute on html element
             html.setAttribute('data-theme', theme);
-            
+
             if (theme === 'dark') {
                 body.style.background = '#0a0e17';
                 body.style.color = '#f8fafc';
@@ -766,12 +753,12 @@
                     themeIcon.setAttribute('data-lucide', 'sun');
                 }
             }
-            
+
             localStorage.setItem('dashboard-theme', theme);
-            
+
             // Update icon colors for Lucide icons
             updateIconColors(theme);
-            
+
             // Reinitialize Lucide icons after theme change
             setTimeout(() => {
                 if (typeof lucide !== 'undefined') {
@@ -784,7 +771,7 @@
         function updateIconColors(theme) {
             const textColor = theme === 'dark' ? '#f8fafc' : '#0f172a';
             const secondaryColor = theme === 'dark' ? '#94a3b8' : '#64748b';
-            
+
             // Update icons with data-theme-text
             document.querySelectorAll('[data-lucide][data-theme-text]').forEach(icon => {
                 const svg = icon.querySelector('svg');
@@ -792,7 +779,7 @@
                     svg.style.stroke = textColor;
                 }
             });
-            
+
             // Update icons with data-theme-secondary
             document.querySelectorAll('[data-lucide][data-theme-secondary]').forEach(icon => {
                 const svg = icon.querySelector('svg');
@@ -852,7 +839,7 @@
         // ==========================================
         // INITIALIZATION
         // ==========================================
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Initialize Lucide icons
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
@@ -868,13 +855,13 @@
             }
 
             // Close modals on outside click
-            document.getElementById('config-modal').addEventListener('click', function(e) {
+            document.getElementById('config-modal').addEventListener('click', function (e) {
                 if (e.target === this) {
                     closeConfigModal();
                 }
             });
 
-            document.getElementById('edit-trade-modal').addEventListener('click', function(e) {
+            document.getElementById('edit-trade-modal').addEventListener('click', function (e) {
                 if (e.target === this) {
                     closeEditTradeModal();
                 }
@@ -1002,6 +989,74 @@
             },
 
             // ─────────────────────────────────────────────────────
+            // CALCULATE BLOCKS (Grupos de 10 trades)
+            // ─────────────────────────────────────────────────────
+            calculateBlocks() {
+                if (this.trades.length === 0) {
+                    return [];
+                }
+
+                // Sort trades by timestamp (oldest first)
+                const sortedTrades = [...this.trades].sort((a, b) => {
+                    const dateA = new Date(a.timestamp || a.createdAt || 0);
+                    const dateB = new Date(b.timestamp || b.createdAt || 0);
+                    return dateA - dateB;
+                });
+
+                const blocks = [];
+                const blockSize = 10;
+                const totalBlocks = Math.ceil(sortedTrades.length / blockSize);
+
+                for (let i = 0; i < totalBlocks; i++) {
+                    const startIdx = i * blockSize;
+                    const endIdx = Math.min(startIdx + blockSize, sortedTrades.length);
+                    const blockTrades = sortedTrades.slice(startIdx, endIdx);
+
+                    // Calculate metrics for this block
+                    const totalTrades = blockTrades.length;
+                    const winners = blockTrades.filter(t => (t.pnl || t.result || 0) > 0);
+                    const losers = blockTrades.filter(t => (t.pnl || t.result || 0) < 0);
+
+                    const winRate = totalTrades > 0 ? (winners.length / totalTrades * 100) : 0;
+
+                    const totalPnL = blockTrades.reduce((sum, t) => {
+                        return sum + (t.pnl || t.result || 0);
+                    }, 0);
+
+                    const avgR = blockTrades.reduce((sum, t) => {
+                        return sum + (t.rReal || t.rExecuted || 0);
+                    }, 0) / totalTrades;
+
+                    const totalWins = winners.reduce((sum, t) => sum + (t.pnl || t.result || 0), 0);
+                    const totalLosses = Math.abs(losers.reduce((sum, t) => sum + (t.pnl || t.result || 0), 0));
+                    const profitFactor = totalLosses > 0 ? (totalWins / totalLosses) : totalWins > 0 ? 999 : 0;
+
+                    const bestTrade = blockTrades.length > 0
+                        ? Math.max(...blockTrades.map(t => t.pnl || t.result || 0))
+                        : 0;
+
+                    const worstTrade = blockTrades.length > 0
+                        ? Math.min(...blockTrades.map(t => t.pnl || t.result || 0))
+                        : 0;
+
+                    blocks.push({
+                        blockNumber: i + 1,
+                        tradesRange: `${startIdx + 1}-${endIdx}`,
+                        totalTrades: totalTrades,
+                        winRate: winRate,
+                        totalPnL: totalPnL,
+                        avgR: avgR,
+                        profitFactor: profitFactor,
+                        bestTrade: bestTrade,
+                        worstTrade: worstTrade,
+                        trades: blockTrades
+                    });
+                }
+
+                return blocks;
+            },
+
+            // ─────────────────────────────────────────────────────
             // RENDER EQUITY CURVE
             // ─────────────────────────────────────────────────────
             renderEquityCurve() {
@@ -1088,7 +1143,7 @@
                                 borderColor: 'rgba(255, 255, 255, 0.2)',
                                 borderWidth: 1,
                                 callbacks: {
-                                    label: function(context) {
+                                    label: function (context) {
                                         const value = context.parsed.y;
                                         const sign = value >= 0 ? '+' : '';
                                         return `${sign}$${value.toFixed(2)}`;
@@ -1115,7 +1170,7 @@
                                 },
                                 ticks: {
                                     color: 'rgba(255, 255, 255, 0.6)',
-                                    callback: function(value) {
+                                    callback: function (value) {
                                         const sign = value >= 0 ? '+' : '';
                                         return `${sign}$${value.toFixed(0)}`;
                                     }
@@ -1156,11 +1211,13 @@
                 console.log(`📊 Rendering view: ${viewId}`);
                 this.currentView = viewId;
 
-                switch(viewId) {
+                switch (viewId) {
                     case 'table':
                         this.renderTableView();
                         break;
                     case 'blocks':
+                        this.renderBloquesView();
+                        break;
                     case 'progress':
                     case 'temporal':
                     case 'ev':
@@ -1662,6 +1719,243 @@
                         </td>
                     </tr>
                 `;
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER BLOQUES VIEW
+            // ─────────────────────────────────────────────────────
+            renderBloquesView() {
+                console.log('📊 Rendering Vista Bloques');
+
+                const container = document.getElementById('view-blocks');
+
+                if (!container) {
+                    console.error('❌ Container #view-blocks not found');
+                    return;
+                }
+
+                // ─── EMPTY STATE (menos de 10 trades) ───
+                if (this.trades.length < 10) {
+                    container.innerHTML = `
+                        <div class="max-w-7xl mx-auto">
+                            <div class="mb-8">
+                                <h2 class="title-main mb-2" data-theme-text>Vista Bloques</h2>
+                                <p class="subtitle" data-theme-subtitle>Análisis por bloques de 10 trades</p>
+                            </div>
+                            <div class="flex flex-col items-center justify-center py-20">
+                                <i data-lucide="layout-grid" class="w-24 h-24 mb-6 opacity-20"></i>
+                                <h3 class="text-3xl font-bold mb-3">Necesitas al menos 10 trades</h3>
+                                <p class="text-lg opacity-50 mb-4 text-center max-w-md">
+                                    Para ver análisis por bloques necesitas al menos 10 trades registrados
+                                </p>
+                                <div class="text-6xl font-bold mb-8" style="color: rgba(59, 130, 246, 0.3);">
+                                    ${this.trades.length} / 10
+                                </div>
+                                <a href="parser.html"
+                                   class="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105">
+                                    <i data-lucide="plus" class="w-5 h-5"></i>
+                                    Agregar más trades
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                // ─── CALCULATE BLOCKS ───
+                const blocks = this.calculateBlocks();
+                console.log(`📦 Calculated ${blocks.length} blocks`);
+
+                // ─── BUILD BLOCKS CARDS HTML ───
+                const blocksCardsHTML = blocks.map(block => {
+                    // Background color based on P&L
+                    const bgColor = block.totalPnL >= 0
+                        ? 'rgba(52, 211, 153, 0.03)'  // green subtle
+                        : 'rgba(248, 113, 113, 0.03)'; // red subtle
+
+                    const borderColor = block.totalPnL >= 0
+                        ? 'rgba(52, 211, 153, 0.15)'
+                        : 'rgba(248, 113, 113, 0.15)';
+
+                    return `
+                        <div class="rounded-2xl p-6 border card transition-all hover:scale-[1.02]"
+                             style="background: ${bgColor}; border-color: ${borderColor}; backdrop-filter: blur(12px);">
+
+                            <!-- Block Number -->
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <div class="text-5xl font-black opacity-20">
+                                        ${block.blockNumber}
+                                    </div>
+                                    <div class="text-sm opacity-60 font-semibold mt-1">
+                                        Trades ${block.tradesRange}
+                                    </div>
+                                </div>
+                                <i data-lucide="package" class="w-8 h-8 opacity-20"></i>
+                            </div>
+
+                            <!-- Metrics Grid -->
+                            <div class="grid grid-cols-2 gap-3">
+
+                                <!-- Win Rate -->
+                                <div class="p-3 rounded-lg bg-white/5 border border-white/10">
+                                    <div class="text-xs opacity-60 uppercase tracking-wide font-semibold mb-1">Win Rate</div>
+                                    <div class="text-xl font-bold ${block.winRate >= 50 ? 'text-emerald-400' : 'text-red-400'}">
+                                        ${block.winRate.toFixed(1)}%
+                                    </div>
+                                </div>
+
+                                <!-- P&L -->
+                                <div class="p-3 rounded-lg bg-white/5 border border-white/10">
+                                    <div class="text-xs opacity-60 uppercase tracking-wide font-semibold mb-1">P&L</div>
+                                    <div class="text-xl font-bold font-mono ${block.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                                        ${block.totalPnL >= 0 ? '+' : ''}${block.totalPnL.toFixed(2)}
+                                    </div>
+                                </div>
+
+                                <!-- Avg R -->
+                                <div class="p-3 rounded-lg bg-white/5 border border-white/10">
+                                    <div class="text-xs opacity-60 uppercase tracking-wide font-semibold mb-1">Avg R</div>
+                                    <div class="text-xl font-bold font-mono ${block.avgR >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                                        ${block.avgR >= 0 ? '+' : ''}${block.avgR.toFixed(2)}R
+                                    </div>
+                                </div>
+
+                                <!-- Profit Factor -->
+                                <div class="p-3 rounded-lg bg-white/5 border border-white/10">
+                                    <div class="text-xs opacity-60 uppercase tracking-wide font-semibold mb-1">PF</div>
+                                    <div class="text-xl font-bold ${block.profitFactor >= 2 ? 'text-emerald-400' : block.profitFactor >= 1 ? 'text-blue-400' : 'text-red-400'}">
+                                        ${block.profitFactor < 999 ? block.profitFactor.toFixed(2) : '∞'}
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    `;
+                }).join('');
+
+                // ─── BUILD CHART DATA ───
+                const chartLabels = blocks.map(b => `Bloque ${b.blockNumber}`);
+                const chartData = blocks.map(b => b.totalPnL);
+
+                // ─── RENDER FULL VIEW ───
+                container.innerHTML = `
+                    <div class="max-w-7xl mx-auto">
+                        <div class="mb-8">
+                            <h2 class="title-main mb-2" data-theme-text>Vista Bloques</h2>
+                            <p class="subtitle" data-theme-subtitle>Análisis por bloques de 10 trades - Identifica patrones de consistencia</p>
+                        </div>
+
+                        <!-- Blocks Cards Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                            ${blocksCardsHTML}
+                        </div>
+
+                        <!-- Comparison Chart -->
+                        <div class="rounded-2xl p-6 border border-white/10"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <h3 class="text-xl font-bold mb-4">Comparación de Bloques</h3>
+                            <div style="height: 350px; position: relative;">
+                                <canvas id="blocksComparisonChart"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+                `;
+
+                // Reinitialize Lucide icons
+                lucide.createIcons();
+
+                // ─── RENDER CHART ───
+                setTimeout(() => {
+                    const canvas = document.getElementById('blocksComparisonChart');
+                    if (!canvas) {
+                        console.error('❌ Canvas element not found');
+                        return;
+                    }
+
+                    const ctx = canvas.getContext('2d');
+
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: chartLabels,
+                            datasets: [{
+                                label: 'P&L por Bloque',
+                                data: chartData,
+                                backgroundColor: chartData.map(value =>
+                                    value >= 0
+                                        ? 'rgba(52, 211, 153, 0.7)'  // green
+                                        : 'rgba(248, 113, 113, 0.7)' // red
+                                ),
+                                borderColor: chartData.map(value =>
+                                    value >= 0
+                                        ? 'rgb(52, 211, 153)'
+                                        : 'rgb(248, 113, 113)'
+                                ),
+                                borderWidth: 2,
+                                borderRadius: 8,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                    padding: 12,
+                                    titleColor: '#fff',
+                                    bodyColor: '#fff',
+                                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                                    borderWidth: 1,
+                                    callbacks: {
+                                        label: function (context) {
+                                            const value = context.parsed.y;
+                                            const sign = value >= 0 ? '+' : '';
+                                            return `${sign}$${value.toFixed(2)}`;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.05)',
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        color: 'rgba(255, 255, 255, 0.6)',
+                                        font: {
+                                            weight: 'bold'
+                                        }
+                                    }
+                                },
+                                y: {
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.05)',
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        color: 'rgba(255, 255, 255, 0.6)',
+                                        callback: function (value) {
+                                            const sign = value >= 0 ? '+' : '';
+                                            return `${sign}$${value.toFixed(0)}`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    console.log('✅ Blocks chart rendered');
+                }, 100);
+
+                console.log(`✅ Vista Bloques rendered with ${blocks.length} blocks`);
             }
         };
 
@@ -1682,7 +1976,7 @@
         // Wrap existing switchView function
         const originalSwitchView = window.switchView;
         if (originalSwitchView) {
-            window.switchView = function(viewId) {
+            window.switchView = function (viewId) {
                 // Call original function
                 originalSwitchView(viewId);
 
@@ -1698,15 +1992,15 @@
     <!-- ============================================ -->
 
     <!-- Edit Observations Modal -->
-    <div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);">
+    <div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+        style="background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);">
         <div class="relative w-full max-w-2xl rounded-2xl border border-white/10 p-6"
-             style="background: rgba(10, 14, 23, 0.95); backdrop-filter: blur(20px);">
+            style="background: rgba(10, 14, 23, 0.95); backdrop-filter: blur(20px);">
 
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
                 <h3 class="text-2xl font-bold">Editar Observaciones</h3>
-                <button onclick="DashboardApp.closeEditModal()"
-                        class="p-2 hover:bg-white/10 rounded-lg transition-all">
+                <button onclick="DashboardApp.closeEditModal()" class="p-2 hover:bg-white/10 rounded-lg transition-all">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
@@ -1730,10 +2024,9 @@
                         <i data-lucide="message-square" class="w-4 h-4 inline mr-2"></i>
                         Observaciones Generales
                     </label>
-                    <textarea id="editObservation"
-                              rows="3"
-                              class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none transition-all resize-none"
-                              placeholder="Describe el trade en general..."></textarea>
+                    <textarea id="editObservation" rows="3"
+                        class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none transition-all resize-none"
+                        placeholder="Describe el trade en general..."></textarea>
                 </div>
 
                 <!-- Lo que salió bien -->
@@ -1742,10 +2035,9 @@
                         <i data-lucide="check-circle" class="w-4 h-4 inline mr-2"></i>
                         Lo que salió bien
                     </label>
-                    <textarea id="editWhatWentWell"
-                              rows="2"
-                              class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-emerald-500/50 focus:outline-none transition-all resize-none"
-                              placeholder="¿Qué hiciste correctamente?"></textarea>
+                    <textarea id="editWhatWentWell" rows="2"
+                        class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-emerald-500/50 focus:outline-none transition-all resize-none"
+                        placeholder="¿Qué hiciste correctamente?"></textarea>
                 </div>
 
                 <!-- Lo que salió mal -->
@@ -1754,16 +2046,15 @@
                         <i data-lucide="alert-circle" class="w-4 h-4 inline mr-2"></i>
                         Lo que salió mal
                     </label>
-                    <textarea id="editWhatWentWrong"
-                              rows="2"
-                              class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-red-500/50 focus:outline-none transition-all resize-none"
-                              placeholder="¿Qué podrías mejorar?"></textarea>
+                    <textarea id="editWhatWentWrong" rows="2"
+                        class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-red-500/50 focus:outline-none transition-all resize-none"
+                        placeholder="¿Qué podrías mejorar?"></textarea>
                 </div>
 
                 <!-- Plan Compliance -->
                 <div class="flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
                     <input type="checkbox" id="editFollowedPlan"
-                           class="w-5 h-5 rounded border-white/20 bg-white/5 checked:bg-blue-500 focus:ring-2 focus:ring-blue-500/50">
+                        class="w-5 h-5 rounded border-white/20 bg-white/5 checked:bg-blue-500 focus:ring-2 focus:ring-blue-500/50">
                     <label for="editFollowedPlan" class="text-sm font-semibold cursor-pointer">
                         Seguí el plan de trading
                     </label>
@@ -1774,11 +2065,11 @@
             <!-- Actions -->
             <div class="flex items-center justify-end gap-3">
                 <button onclick="DashboardApp.closeEditModal()"
-                        class="px-6 py-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 font-semibold transition-all">
+                    class="px-6 py-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 font-semibold transition-all">
                     Cancelar
                 </button>
                 <button onclick="DashboardApp.saveObservations()"
-                        class="px-6 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 font-semibold transition-all shadow-lg">
+                    class="px-6 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 font-semibold transition-all shadow-lg">
                     Guardar Cambios
                 </button>
             </div>
