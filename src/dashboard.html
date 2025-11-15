@@ -1259,7 +1259,7 @@
 
                 this.editingTradeId = tradeId;
 
-                // Populate modal with trade data
+                // Populate modal header with trade data
                 document.getElementById('modalTradeNumber').textContent = `#${trade.tradeNumber}`;
                 document.getElementById('modalSymbol').textContent = trade.symbol || '-';
 
@@ -1277,11 +1277,58 @@
                 document.getElementById('modalPnL').textContent = `${pnlSign}${Math.abs(pnl).toFixed(2)}`;
                 document.getElementById('modalPnL').className = `font-mono ${pnlColor}`;
 
-                // Fill form fields
+                // ═══════════════════════════════════════════════
+                // SECCIÓN 1: DATOS BÁSICOS
+                // ═══════════════════════════════════════════════
+                document.getElementById('editType').value = trade.type || 'LONG';
+                document.getElementById('editEntry').value = trade.entry || '';
+                document.getElementById('editExit').value = trade.exit || trade.exitPrice || '';
+                document.getElementById('editVolume').value = trade.volume || '';
+
+                // ═══════════════════════════════════════════════
+                // SECCIÓN 2: RISK MANAGEMENT
+                // ═══════════════════════════════════════════════
+                document.getElementById('editStopLoss').value = trade.stopLoss || trade.sl || '';
+                document.getElementById('editTakeProfit').value = trade.takeProfit || trade.tp || '';
+                document.getElementById('editRiskPlanned').value = trade.riskPlanned || trade.risk || '';
+
+                // ═══════════════════════════════════════════════
+                // SECCIÓN 3: OBSERVACIONES
+                // ═══════════════════════════════════════════════
                 document.getElementById('editObservation').value = trade.observation || '';
                 document.getElementById('editWhatWentWell').value = trade.whatWentWell || '';
                 document.getElementById('editWhatWentWrong').value = trade.whatWentWrong || '';
                 document.getElementById('editFollowedPlan').checked = trade.followedPlan || false;
+
+                // ═══════════════════════════════════════════════
+                // SECCIÓN 4: REGLAS VIOLADAS
+                // ═══════════════════════════════════════════════
+                const brokeRules = trade.brokeRules || false;
+                document.getElementById('editBrokeRules').checked = brokeRules;
+
+                // Show/hide rules container based on brokeRules
+                const rulesContainer = document.getElementById('rulesViolatedContainer');
+                const currentRulesList = document.getElementById('currentRulesList');
+
+                if (brokeRules) {
+                    rulesContainer.classList.remove('hidden');
+
+                    // If rulesViolated is an array, join with newlines
+                    if (trade.rulesViolated && Array.isArray(trade.rulesViolated)) {
+                        document.getElementById('editRulesViolated').value = trade.rulesViolated.join('\n');
+
+                        // Show current rules
+                        currentRulesList.classList.remove('hidden');
+                        document.getElementById('currentRulesContent').innerHTML =
+                            trade.rulesViolated.map(rule => `<div class="mb-1">• ${rule}</div>`).join('');
+                    } else {
+                        document.getElementById('editRulesViolated').value = '';
+                    }
+                } else {
+                    rulesContainer.classList.add('hidden');
+                    currentRulesList.classList.add('hidden');
+                    document.getElementById('editRulesViolated').value = '';
+                }
 
                 // Show modal
                 document.getElementById('editModal').classList.remove('hidden');
@@ -1300,34 +1347,123 @@
             },
 
             // ─────────────────────────────────────────────────────
-            // SAVE OBSERVATIONS
+            // SAVE TRADE (formerly saveObservations)
             // ─────────────────────────────────────────────────────
             async saveObservations() {
-                console.log('💾 Saving observations for trade:', this.editingTradeId);
+                console.log('💾 Saving trade data for trade:', this.editingTradeId);
 
                 if (!this.editingTradeId) {
                     console.error('No trade selected for editing');
                     return;
                 }
 
-                // Get form values
+                // ═══════════════════════════════════════════════
+                // GET ALL FORM VALUES
+                // ═══════════════════════════════════════════════
+
+                // SECCIÓN 1: Datos Básicos
+                const type = document.getElementById('editType').value;
+                const entry = parseFloat(document.getElementById('editEntry').value) || 0;
+                const exit = parseFloat(document.getElementById('editExit').value) || 0;
+                const volume = parseFloat(document.getElementById('editVolume').value) || 0;
+
+                // SECCIÓN 2: Risk Management
+                const stopLoss = parseFloat(document.getElementById('editStopLoss').value) || 0;
+                const takeProfit = parseFloat(document.getElementById('editTakeProfit').value) || 0;
+                const riskPlanned = parseFloat(document.getElementById('editRiskPlanned').value) || 0;
+
+                // SECCIÓN 3: Observaciones
                 const observation = document.getElementById('editObservation').value.trim();
                 const whatWentWell = document.getElementById('editWhatWentWell').value.trim();
                 const whatWentWrong = document.getElementById('editWhatWentWrong').value.trim();
                 const followedPlan = document.getElementById('editFollowedPlan').checked;
 
-                // Update trade in memory
+                // SECCIÓN 4: Reglas Violadas
+                const brokeRules = document.getElementById('editBrokeRules').checked;
+                const rulesViolatedText = document.getElementById('editRulesViolated').value.trim();
+                const rulesViolated = brokeRules && rulesViolatedText
+                    ? rulesViolatedText.split('\n').map(r => r.trim()).filter(r => r.length > 0)
+                    : [];
+
+                // ═══════════════════════════════════════════════
+                // VALIDATION
+                // ═══════════════════════════════════════════════
+                if (entry <= 0 || exit <= 0 || volume <= 0) {
+                    alert('Entry, Exit y Volume deben ser mayores a 0');
+                    return;
+                }
+
+                // ═══════════════════════════════════════════════
+                // RECALCULATE P&L
+                // ═══════════════════════════════════════════════
+                let pnl = 0;
+                if (type === 'LONG') {
+                    pnl = (exit - entry) * volume;
+                } else { // SHORT
+                    pnl = (entry - exit) * volume;
+                }
+
+                // ═══════════════════════════════════════════════
+                // RECALCULATE R REAL
+                // ═══════════════════════════════════════════════
+                let rReal = 0;
+                if (riskPlanned > 0) {
+                    rReal = pnl / riskPlanned;
+                } else {
+                    // If no risk planned, calculate based on SL
+                    if (stopLoss > 0) {
+                        const riskPerUnit = Math.abs(entry - stopLoss);
+                        const totalRisk = riskPerUnit * volume;
+                        if (totalRisk > 0) {
+                            rReal = pnl / totalRisk;
+                        }
+                    }
+                }
+
+                console.log('📊 Recalculated metrics:', { pnl, rReal });
+
+                // ═══════════════════════════════════════════════
+                // UPDATE TRADE IN MEMORY
+                // ═══════════════════════════════════════════════
                 const trade = this.trades.find(t => t.tradeNumber === this.editingTradeId);
                 if (trade) {
+                    // Datos básicos
+                    trade.type = type;
+                    trade.entry = entry;
+                    trade.exit = exit;
+                    trade.exitPrice = exit; // support legacy field
+                    trade.volume = volume;
+
+                    // Risk management
+                    trade.stopLoss = stopLoss;
+                    trade.sl = stopLoss; // support legacy field
+                    trade.takeProfit = takeProfit;
+                    trade.tp = takeProfit; // support legacy field
+                    trade.riskPlanned = riskPlanned;
+                    trade.risk = riskPlanned; // support legacy field
+
+                    // Calculated fields
+                    trade.pnl = pnl;
+                    trade.result = pnl; // support legacy field
+                    trade.rReal = rReal;
+                    trade.rExecuted = rReal; // support legacy field
+
+                    // Observaciones
                     trade.observation = observation;
                     trade.whatWentWell = whatWentWell;
                     trade.whatWentWrong = whatWentWrong;
                     trade.followedPlan = followedPlan;
 
-                    console.log('Updated trade:', trade);
+                    // Reglas
+                    trade.brokeRules = brokeRules;
+                    trade.rulesViolated = rulesViolated;
+
+                    console.log('✅ Updated trade in memory:', trade);
                 }
 
-                // Save to storage
+                // ═══════════════════════════════════════════════
+                // SAVE TO STORAGE
+                // ═══════════════════════════════════════════════
                 try {
                     const allData = await StorageManager.getTrades();
 
@@ -1336,27 +1472,57 @@
                         const tradeIndex = allData.trades.findIndex(t => t.tradeNumber === this.editingTradeId);
 
                         if (tradeIndex !== -1) {
-                            allData.trades[tradeIndex].observation = observation;
-                            allData.trades[tradeIndex].whatWentWell = whatWentWell;
-                            allData.trades[tradeIndex].whatWentWrong = whatWentWrong;
-                            allData.trades[tradeIndex].followedPlan = followedPlan;
+                            // Update all fields
+                            const updatedTrade = allData.trades[tradeIndex];
+
+                            // Datos básicos
+                            updatedTrade.type = type;
+                            updatedTrade.entry = entry;
+                            updatedTrade.exit = exit;
+                            updatedTrade.exitPrice = exit;
+                            updatedTrade.volume = volume;
+
+                            // Risk management
+                            updatedTrade.stopLoss = stopLoss;
+                            updatedTrade.sl = stopLoss;
+                            updatedTrade.takeProfit = takeProfit;
+                            updatedTrade.tp = takeProfit;
+                            updatedTrade.riskPlanned = riskPlanned;
+                            updatedTrade.risk = riskPlanned;
+
+                            // Calculated fields
+                            updatedTrade.pnl = pnl;
+                            updatedTrade.result = pnl;
+                            updatedTrade.rReal = rReal;
+                            updatedTrade.rExecuted = rReal;
+
+                            // Observaciones
+                            updatedTrade.observation = observation;
+                            updatedTrade.whatWentWell = whatWentWell;
+                            updatedTrade.whatWentWrong = whatWentWrong;
+                            updatedTrade.followedPlan = followedPlan;
+
+                            // Reglas
+                            updatedTrade.brokeRules = brokeRules;
+                            updatedTrade.rulesViolated = rulesViolated;
 
                             // Save back to storage
                             await StorageManager.setTrades(allData);
 
-                            console.log('✅ Observations saved to storage');
+                            console.log('✅ Trade saved to storage');
 
                             // Close modal
                             this.closeEditModal();
 
-                            // Refresh table to show updated observations
-                            this.renderTableView();
+                            // Refresh active view to show updated data
+                            this.renderActiveView();
                         } else {
-                            console.error('Trade not found in storage');
+                            console.error('❌ Trade not found in storage');
+                            alert('Error: Trade no encontrado en storage');
                         }
                     }
                 } catch (error) {
-                    console.error('❌ Error saving observations:', error);
+                    console.error('❌ Error saving trade:', error);
                     alert('Error al guardar. Por favor intenta de nuevo.');
                 }
             },
@@ -1999,7 +2165,7 @@
 
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
-                <h3 class="text-2xl font-bold">Editar Observaciones</h3>
+                <h3 class="text-2xl font-bold">Editar Trade</h3>
                 <button onclick="DashboardApp.closeEditModal()" class="p-2 hover:bg-white/10 rounded-lg transition-all">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
@@ -2016,48 +2182,168 @@
             </div>
 
             <!-- Form -->
-            <div class="space-y-4 mb-6">
+            <div class="space-y-6 mb-6 max-h-[60vh] overflow-y-auto pr-2">
 
-                <!-- Observaciones Generales -->
-                <div>
-                    <label class="block text-sm font-semibold opacity-60 uppercase tracking-wide mb-2">
-                        <i data-lucide="message-square" class="w-4 h-4 inline mr-2"></i>
-                        Observaciones Generales
-                    </label>
-                    <textarea id="editObservation" rows="3"
-                        class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none transition-all resize-none"
-                        placeholder="Describe el trade en general..."></textarea>
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- SECCIÓN 1: DATOS BÁSICOS -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 pb-2 border-b border-white/10">
+                        <i data-lucide="bar-chart-2" class="w-5 h-5 text-blue-400"></i>
+                        <h4 class="text-sm font-bold uppercase tracking-wide text-blue-400">Datos Básicos</h4>
+                    </div>
+
+                    <!-- Type -->
+                    <div>
+                        <label class="block text-xs font-semibold opacity-60 uppercase tracking-wide mb-2">Tipo</label>
+                        <select id="editType"
+                            class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none transition-all font-semibold">
+                            <option value="LONG">LONG</option>
+                            <option value="SHORT">SHORT</option>
+                        </select>
+                    </div>
+
+                    <!-- Entry, Exit, Volume -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold opacity-60 uppercase tracking-wide mb-2">Entry</label>
+                            <input type="number" step="0.01" id="editEntry"
+                                class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none transition-all font-mono"
+                                placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold opacity-60 uppercase tracking-wide mb-2">Exit</label>
+                            <input type="number" step="0.01" id="editExit"
+                                class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none transition-all font-mono"
+                                placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold opacity-60 uppercase tracking-wide mb-2">Volume</label>
+                            <input type="number" step="0.01" id="editVolume"
+                                class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none transition-all font-mono"
+                                placeholder="0.00">
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Lo que salió bien -->
-                <div>
-                    <label class="block text-sm font-semibold text-emerald-400 uppercase tracking-wide mb-2">
-                        <i data-lucide="check-circle" class="w-4 h-4 inline mr-2"></i>
-                        Lo que salió bien
-                    </label>
-                    <textarea id="editWhatWentWell" rows="2"
-                        class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-emerald-500/50 focus:outline-none transition-all resize-none"
-                        placeholder="¿Qué hiciste correctamente?"></textarea>
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- SECCIÓN 2: RISK MANAGEMENT -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 pb-2 border-b border-white/10">
+                        <i data-lucide="shield" class="w-5 h-5 text-purple-400"></i>
+                        <h4 class="text-sm font-bold uppercase tracking-wide text-purple-400">Risk Management</h4>
+                    </div>
+
+                    <!-- SL, TP, Risk -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold opacity-60 uppercase tracking-wide mb-2">Stop Loss</label>
+                            <input type="number" step="0.01" id="editStopLoss"
+                                class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-red-500/50 focus:outline-none transition-all font-mono"
+                                placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold opacity-60 uppercase tracking-wide mb-2">Take Profit</label>
+                            <input type="number" step="0.01" id="editTakeProfit"
+                                class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-emerald-500/50 focus:outline-none transition-all font-mono"
+                                placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold opacity-60 uppercase tracking-wide mb-2">Risk Planned</label>
+                            <input type="number" step="0.01" id="editRiskPlanned"
+                                class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-500/50 focus:outline-none transition-all font-mono"
+                                placeholder="0.00">
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Lo que salió mal -->
-                <div>
-                    <label class="block text-sm font-semibold text-red-400 uppercase tracking-wide mb-2">
-                        <i data-lucide="alert-circle" class="w-4 h-4 inline mr-2"></i>
-                        Lo que salió mal
-                    </label>
-                    <textarea id="editWhatWentWrong" rows="2"
-                        class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-red-500/50 focus:outline-none transition-all resize-none"
-                        placeholder="¿Qué podrías mejorar?"></textarea>
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- SECCIÓN 3: OBSERVACIONES -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 pb-2 border-b border-white/10">
+                        <i data-lucide="message-square" class="w-5 h-5 text-cyan-400"></i>
+                        <h4 class="text-sm font-bold uppercase tracking-wide text-cyan-400">Observaciones</h4>
+                    </div>
+
+                    <!-- Observaciones Generales -->
+                    <div>
+                        <label class="block text-xs font-semibold opacity-60 uppercase tracking-wide mb-2">
+                            Observaciones Generales
+                        </label>
+                        <textarea id="editObservation" rows="3"
+                            class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none transition-all resize-none"
+                            placeholder="Describe el trade en general..."></textarea>
+                    </div>
+
+                    <!-- Lo que salió bien -->
+                    <div>
+                        <label class="block text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-2">
+                            <i data-lucide="check-circle" class="w-4 h-4 inline mr-2"></i>
+                            Lo que salió bien
+                        </label>
+                        <textarea id="editWhatWentWell" rows="2"
+                            class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-emerald-500/50 focus:outline-none transition-all resize-none"
+                            placeholder="¿Qué hiciste correctamente?"></textarea>
+                    </div>
+
+                    <!-- Lo que salió mal -->
+                    <div>
+                        <label class="block text-xs font-semibold text-red-400 uppercase tracking-wide mb-2">
+                            <i data-lucide="alert-circle" class="w-4 h-4 inline mr-2"></i>
+                            Lo que salió mal
+                        </label>
+                        <textarea id="editWhatWentWrong" rows="2"
+                            class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-red-500/50 focus:outline-none transition-all resize-none"
+                            placeholder="¿Qué podrías mejorar?"></textarea>
+                    </div>
+
+                    <!-- Plan Compliance -->
+                    <div class="flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
+                        <input type="checkbox" id="editFollowedPlan"
+                            class="w-5 h-5 rounded border-white/20 bg-white/5 checked:bg-blue-500 focus:ring-2 focus:ring-blue-500/50">
+                        <label for="editFollowedPlan" class="text-sm font-semibold cursor-pointer">
+                            Seguí el plan de trading
+                        </label>
+                    </div>
                 </div>
 
-                <!-- Plan Compliance -->
-                <div class="flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
-                    <input type="checkbox" id="editFollowedPlan"
-                        class="w-5 h-5 rounded border-white/20 bg-white/5 checked:bg-blue-500 focus:ring-2 focus:ring-blue-500/50">
-                    <label for="editFollowedPlan" class="text-sm font-semibold cursor-pointer">
-                        Seguí el plan de trading
-                    </label>
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- SECCIÓN 4: REGLAS VIOLADAS -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 pb-2 border-b border-white/10">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400"></i>
+                        <h4 class="text-sm font-bold uppercase tracking-wide text-amber-400">Reglas del Plan</h4>
+                    </div>
+
+                    <!-- Checkbox "Rompí reglas" -->
+                    <div class="flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
+                        <input type="checkbox" id="editBrokeRules"
+                            class="w-5 h-5 rounded border-white/20 bg-white/5 checked:bg-amber-500 focus:ring-2 focus:ring-amber-500/50"
+                            onchange="document.getElementById('rulesViolatedContainer').classList.toggle('hidden', !this.checked)">
+                        <label for="editBrokeRules" class="text-sm font-semibold cursor-pointer">
+                            Rompí reglas del plan de trading
+                        </label>
+                    </div>
+
+                    <!-- Textarea reglas violadas (oculto por defecto) -->
+                    <div id="rulesViolatedContainer" class="hidden">
+                        <label class="block text-xs font-semibold text-amber-400 uppercase tracking-wide mb-2">
+                            ¿Qué reglas violé?
+                        </label>
+                        <textarea id="editRulesViolated" rows="3"
+                            class="w-full px-4 py-3 rounded-lg bg-amber-500/5 border border-amber-500/30 focus:border-amber-500/50 focus:outline-none transition-all resize-none"
+                            placeholder="Ejemplo: Moví el SL, Operé en horario prohibido, etc. (una por línea)"></textarea>
+                    </div>
+
+                    <!-- Lista actual de reglas (si existen) -->
+                    <div id="currentRulesList" class="hidden">
+                        <div class="text-xs font-semibold opacity-60 uppercase tracking-wide mb-2">Reglas actuales:</div>
+                        <div id="currentRulesContent" class="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-sm">
+                        </div>
+                    </div>
                 </div>
 
             </div>
