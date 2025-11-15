@@ -438,6 +438,40 @@
                 transform: translateY(0);
             }
         }
+
+        /* Modal animations */
+        #editModal {
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        #editModal > div {
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Textarea styling */
+        textarea {
+            font-family: inherit;
+        }
+
+        textarea::placeholder {
+            opacity: 0.4;
+        }
     </style>
 </head>
 
@@ -854,6 +888,7 @@
             trades: [],
             currentView: 'table',
             expandedTradeId: null,
+            editingTradeId: null,
 
             // ─────────────────────────────────────────────────────
             // INITIALIZATION
@@ -1015,6 +1050,123 @@
                 }
 
                 this.renderTableView(); // Re-render table
+            },
+
+            // ─────────────────────────────────────────────────────
+            // OPEN EDIT MODAL
+            // ─────────────────────────────────────────────────────
+            openEditModal(tradeId) {
+                console.log('✏️ Opening edit modal for trade:', tradeId);
+
+                // Find trade
+                const trade = this.trades.find(t => t.tradeNumber === tradeId);
+                if (!trade) {
+                    console.error('Trade not found:', tradeId);
+                    return;
+                }
+
+                this.editingTradeId = tradeId;
+
+                // Populate modal with trade data
+                document.getElementById('modalTradeNumber').textContent = `#${trade.tradeNumber}`;
+                document.getElementById('modalSymbol').textContent = trade.symbol || '-';
+
+                // Type badge
+                const typeEl = document.getElementById('modalType');
+                typeEl.textContent = trade.type || '-';
+                typeEl.className = trade.type === 'LONG'
+                    ? 'px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                    : 'px-3 py-1 rounded-lg text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30';
+
+                // P&L
+                const pnl = trade.pnl || trade.result || 0;
+                const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+                const pnlSign = pnl >= 0 ? '+' : '-';
+                document.getElementById('modalPnL').textContent = `${pnlSign}${Math.abs(pnl).toFixed(2)}`;
+                document.getElementById('modalPnL').className = `font-mono ${pnlColor}`;
+
+                // Fill form fields
+                document.getElementById('editObservation').value = trade.observation || '';
+                document.getElementById('editWhatWentWell').value = trade.whatWentWell || '';
+                document.getElementById('editWhatWentWrong').value = trade.whatWentWrong || '';
+                document.getElementById('editFollowedPlan').checked = trade.followedPlan || false;
+
+                // Show modal
+                document.getElementById('editModal').classList.remove('hidden');
+
+                // Re-init Lucide icons
+                lucide.createIcons();
+            },
+
+            // ─────────────────────────────────────────────────────
+            // CLOSE EDIT MODAL
+            // ─────────────────────────────────────────────────────
+            closeEditModal() {
+                console.log('❌ Closing edit modal');
+                document.getElementById('editModal').classList.add('hidden');
+                this.editingTradeId = null;
+            },
+
+            // ─────────────────────────────────────────────────────
+            // SAVE OBSERVATIONS
+            // ─────────────────────────────────────────────────────
+            async saveObservations() {
+                console.log('💾 Saving observations for trade:', this.editingTradeId);
+
+                if (!this.editingTradeId) {
+                    console.error('No trade selected for editing');
+                    return;
+                }
+
+                // Get form values
+                const observation = document.getElementById('editObservation').value.trim();
+                const whatWentWell = document.getElementById('editWhatWentWell').value.trim();
+                const whatWentWrong = document.getElementById('editWhatWentWrong').value.trim();
+                const followedPlan = document.getElementById('editFollowedPlan').checked;
+
+                // Update trade in memory
+                const trade = this.trades.find(t => t.tradeNumber === this.editingTradeId);
+                if (trade) {
+                    trade.observation = observation;
+                    trade.whatWentWell = whatWentWell;
+                    trade.whatWentWrong = whatWentWrong;
+                    trade.followedPlan = followedPlan;
+
+                    console.log('Updated trade:', trade);
+                }
+
+                // Save to storage
+                try {
+                    const allData = await StorageManager.getTrades();
+
+                    if (allData && allData.trades) {
+                        // Find and update the trade in storage
+                        const tradeIndex = allData.trades.findIndex(t => t.tradeNumber === this.editingTradeId);
+
+                        if (tradeIndex !== -1) {
+                            allData.trades[tradeIndex].observation = observation;
+                            allData.trades[tradeIndex].whatWentWell = whatWentWell;
+                            allData.trades[tradeIndex].whatWentWrong = whatWentWrong;
+                            allData.trades[tradeIndex].followedPlan = followedPlan;
+
+                            // Save back to storage
+                            await StorageManager.setTrades(allData);
+
+                            console.log('✅ Observations saved to storage');
+
+                            // Close modal
+                            this.closeEditModal();
+
+                            // Refresh table to show updated observations
+                            this.renderTableView();
+                        } else {
+                            console.error('Trade not found in storage');
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Error saving observations:', error);
+                    alert('Error al guardar. Por favor intenta de nuevo.');
+                }
             },
 
             // ─────────────────────────────────────────────────────
@@ -1341,9 +1493,10 @@
                                         </div>
                                     ` : ''}
 
-                                    <!-- Botón Editar (placeholder) -->
+                                    <!-- Botón Editar -->
                                     <div class="pt-4 border-t border-white/5">
-                                        <button class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium transition-all border border-blue-500/30">
+                                        <button onclick="event.stopPropagation(); DashboardApp.openEditModal(${trade.tradeNumber})"
+                                                class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium transition-all border border-blue-500/30">
                                             <i data-lucide="edit-3" class="w-4 h-4"></i>
                                             Editar Observaciones
                                         </button>
@@ -1384,6 +1537,99 @@
             };
         }
     </script>
+
+    <!-- ============================================ -->
+    <!-- EDIT OBSERVATIONS MODAL -->
+    <!-- ============================================ -->
+
+    <!-- Edit Observations Modal -->
+    <div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);">
+        <div class="relative w-full max-w-2xl rounded-2xl border border-white/10 p-6"
+             style="background: rgba(10, 14, 23, 0.95); backdrop-filter: blur(20px);">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold">Editar Observaciones</h3>
+                <button onclick="DashboardApp.closeEditModal()"
+                        class="p-2 hover:bg-white/10 rounded-lg transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Trade Info -->
+            <div class="mb-6 p-4 rounded-lg bg-white/5 border border-white/10">
+                <div class="flex items-center gap-4 text-sm">
+                    <span class="font-bold" id="modalTradeNumber">#1</span>
+                    <span class="font-bold" id="modalSymbol">BTCUSD</span>
+                    <span id="modalType" class="px-3 py-1 rounded-lg text-xs font-bold">LONG</span>
+                    <span class="font-mono" id="modalPnL">+$100.00</span>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <div class="space-y-4 mb-6">
+
+                <!-- Observaciones Generales -->
+                <div>
+                    <label class="block text-sm font-semibold opacity-60 uppercase tracking-wide mb-2">
+                        <i data-lucide="message-square" class="w-4 h-4 inline mr-2"></i>
+                        Observaciones Generales
+                    </label>
+                    <textarea id="editObservation"
+                              rows="3"
+                              class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none transition-all resize-none"
+                              placeholder="Describe el trade en general..."></textarea>
+                </div>
+
+                <!-- Lo que salió bien -->
+                <div>
+                    <label class="block text-sm font-semibold text-emerald-400 uppercase tracking-wide mb-2">
+                        <i data-lucide="check-circle" class="w-4 h-4 inline mr-2"></i>
+                        Lo que salió bien
+                    </label>
+                    <textarea id="editWhatWentWell"
+                              rows="2"
+                              class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-emerald-500/50 focus:outline-none transition-all resize-none"
+                              placeholder="¿Qué hiciste correctamente?"></textarea>
+                </div>
+
+                <!-- Lo que salió mal -->
+                <div>
+                    <label class="block text-sm font-semibold text-red-400 uppercase tracking-wide mb-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4 inline mr-2"></i>
+                        Lo que salió mal
+                    </label>
+                    <textarea id="editWhatWentWrong"
+                              rows="2"
+                              class="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-red-500/50 focus:outline-none transition-all resize-none"
+                              placeholder="¿Qué podrías mejorar?"></textarea>
+                </div>
+
+                <!-- Plan Compliance -->
+                <div class="flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
+                    <input type="checkbox" id="editFollowedPlan"
+                           class="w-5 h-5 rounded border-white/20 bg-white/5 checked:bg-blue-500 focus:ring-2 focus:ring-blue-500/50">
+                    <label for="editFollowedPlan" class="text-sm font-semibold cursor-pointer">
+                        Seguí el plan de trading
+                    </label>
+                </div>
+
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-end gap-3">
+                <button onclick="DashboardApp.closeEditModal()"
+                        class="px-6 py-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 font-semibold transition-all">
+                    Cancelar
+                </button>
+                <button onclick="DashboardApp.saveObservations()"
+                        class="px-6 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 font-semibold transition-all shadow-lg">
+                    Guardar Cambios
+                </button>
+            </div>
+
+        </div>
+    </div>
 
 </body>
 
