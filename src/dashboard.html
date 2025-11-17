@@ -1962,36 +1962,8 @@
                     // Check if this block is expanded
                     const isExpanded = this.expandedBlock === block.blockNumber;
 
-                    // Build trades list HTML
-                    const tradesListHTML = block.trades.map(trade => {
-                        const pnl = trade.pnl || trade.result || 0;
-                        const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
-                        const pnlSign = pnl >= 0 ? '+' : '';
-                        const typeBadge = trade.type === 'LONG'
-                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                            : 'bg-red-500/15 text-red-400 border-red-500/30';
-
-                        return `
-                            <div class="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer"
-                                 onclick="DashboardApp.goToTradeInTable(${trade.tradeNumber})">
-                                <div class="flex items-center justify-between gap-3">
-                                    <div class="flex items-center gap-3 flex-1">
-                                        <span class="text-sm font-bold opacity-60">#${trade.tradeNumber}</span>
-                                        <span class="text-sm font-bold">${trade.symbol || '-'}</span>
-                                        <span class="px-2 py-0.5 rounded text-xs font-bold border ${typeBadge}">
-                                            ${trade.type || '-'}
-                                        </span>
-                                    </div>
-                                    <span class="text-sm font-bold font-mono ${pnlColor}">
-                                        ${pnlSign}${Math.abs(pnl).toFixed(2)}
-                                    </span>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-
                     return `
-                        <div class="rounded-2xl border card transition-all"
+                        <div class="rounded-2xl border card transition-all duration-300 ${isExpanded ? 'col-span-full' : ''}"
                              data-block-number="${block.blockNumber}"
                              style="background: ${bgColor}; border-color: ${borderColor}; backdrop-filter: blur(12px);">
 
@@ -2016,7 +1988,7 @@
                                 </div>
 
                                 <!-- Metrics Grid -->
-                                <div class="grid grid-cols-2 gap-3">
+                                <div class="grid ${isExpanded ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2'} gap-3">
 
                                     <!-- Win Rate -->
                                     <div class="p-3 rounded-lg bg-white/5 border border-white/10">
@@ -2054,16 +2026,17 @@
 
                             </div>
 
-                            <!-- Expanded Section (Trades List) -->
-                            <div class="block-trades-list ${isExpanded ? '' : 'hidden'}"
+                            <!-- Expanded Section (Full Table) -->
+                            <div class="block-trades-table ${isExpanded ? '' : 'hidden'}"
                                  style="transition: all 0.3s ease; overflow: hidden;">
-                                <div class="px-6 pb-6 pt-2 border-t border-white/10">
-                                    <div class="flex items-center gap-2 mb-3">
-                                        <i data-lucide="list" class="w-4 h-4 opacity-60"></i>
-                                        <h5 class="text-xs font-bold uppercase tracking-wide opacity-60">Trades del Bloque</h5>
+                                <div class="px-6 pb-6 pt-6 border-t border-white/10">
+                                    <div class="flex items-center gap-2 mb-6">
+                                        <i data-lucide="table" class="w-4 h-4 opacity-60"></i>
+                                        <h5 class="text-xs font-bold uppercase tracking-wide opacity-60">Trades del Bloque (${block.totalTrades})</h5>
                                     </div>
-                                    <div class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                                        ${tradesListHTML}
+                                    <div class="rounded-xl overflow-hidden border border-white/10"
+                                         style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px); max-height: 700px; overflow-y: auto;">
+                                        ${isExpanded ? this.renderBlockTable(block) : ''}
                                     </div>
                                 </div>
                             </div>
@@ -2246,6 +2219,47 @@
                         console.warn('⚠️ Trade row not found:', tradeNumber);
                     }
                 }, 300);
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER BLOCK TABLE (Tabla completa para bloque expandido)
+            // ─────────────────────────────────────────────────────
+            renderBlockTable(block) {
+                console.log('📊 Rendering block table for block:', block.blockNumber);
+                console.log('✅ TABLE SPACING: Headers py-4 px-6 (16px/24px) - SYNCHRONIZED WITH VISTA TABLA');
+
+                // Sort trades by timestamp (most recent first)
+                const sorted = [...block.trades].sort((a, b) => {
+                    const dateA = new Date(a.timestamp || a.createdAt || 0);
+                    const dateB = new Date(b.timestamp || b.createdAt || 0);
+                    return dateB - dateA;
+                });
+
+                // Generate table rows using existing renderTradeRow function
+                const tableRows = sorted.map(trade => this.renderTradeRow(trade)).join('');
+
+                // Return table HTML
+                return `
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-white/10">
+                                    <th class="text-left py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">#</th>
+                                    <th class="text-left py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Symbol</th>
+                                    <th class="text-left py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Type</th>
+                                    <th class="text-right py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Entry</th>
+                                    <th class="text-right py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Exit</th>
+                                    <th class="text-right py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Volume</th>
+                                    <th class="text-right py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Result</th>
+                                    <th class="text-right py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">R Real</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
             }
         };
 
