@@ -1256,7 +1256,8 @@
                     this.expandedTradeId = tradeId; // Expand
                 }
 
-                this.renderTableView(); // Re-render table
+                // Re-render current view (works for both table and blocks)
+                this.renderActiveView();
             },
 
             // ─────────────────────────────────────────────────────
