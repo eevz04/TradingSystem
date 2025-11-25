@@ -1233,8 +1233,10 @@
                     case 'blocks':
                         this.renderBloquesView();
                         break;
-                    case 'progress':
                     case 'temporal':
+                        this.renderTemporalView();
+                        break;
+                    case 'progress':
                     case 'ev':
                         // Keep existing placeholder (coming soon)
                         console.log(`View ${viewId} - Placeholder shown`);
@@ -2261,6 +2263,515 @@
                         </table>
                     </div>
                 `;
+            },
+
+            // ─────────────────────────────────────────────────────
+            // CALCULATE PERFORMANCE BY HOUR
+            // ─────────────────────────────────────────────────────
+            calculatePerformanceByHour() {
+                console.log('🕐 Processing', this.trades.length, 'trades for hourly temporal analysis');
+
+                const hourlyData = {};
+
+                // Initialize all 24 hours
+                for (let hour = 0; hour < 24; hour++) {
+                    hourlyData[hour] = {
+                        hour,
+                        trades: [],
+                        count: 0,
+                        wins: 0,
+                        totalR: 0,
+                        avgR: 0,
+                        winRate: 0
+                    };
+                }
+
+                // Process each trade
+                this.trades.forEach(trade => {
+                    // Usar openTimeUTC o openTimeBRT
+                    if (!trade.openTimeUTC && !trade.openTimeBRT) {
+                        console.warn('⚠️ Trade sin openTimeUTC/openTimeBRT:', trade.tradeNumber);
+                        return;
+                    }
+
+                    const timeStr = trade.openTimeUTC || trade.openTimeBRT;
+                    const date = new Date(timeStr);
+                    const hour = date.getHours();
+
+                    hourlyData[hour].trades.push(trade);
+                    hourlyData[hour].count++;
+                    if ((trade.rExecuted || 0) > 0) hourlyData[hour].wins++;
+                    hourlyData[hour].totalR += trade.rExecuted || 0;
+                });
+
+                // Calculate averages
+                Object.values(hourlyData).forEach(data => {
+                    if (data.count > 0) {
+                        data.avgR = data.totalR / data.count;
+                        data.winRate = (data.wins / data.count) * 100;
+                    }
+                });
+
+                console.log('✅ Hourly data processed:', Object.values(hourlyData).filter(d => d.count > 0).length, 'hours with trades');
+
+                return hourlyData;
+            },
+
+            // ─────────────────────────────────────────────────────
+            // CALCULATE PERFORMANCE BY DAY
+            // ─────────────────────────────────────────────────────
+            calculatePerformanceByDay() {
+                console.log('📅 Processing', this.trades.length, 'trades for daily temporal analysis');
+
+                const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                const dailyData = {};
+
+                // Initialize all 7 days
+                for (let day = 0; day < 7; day++) {
+                    dailyData[day] = {
+                        day,
+                        dayName: dayNames[day],
+                        trades: [],
+                        count: 0,
+                        wins: 0,
+                        totalR: 0,
+                        avgR: 0,
+                        winRate: 0
+                    };
+                }
+
+                // Process each trade
+                this.trades.forEach(trade => {
+                    // Usar openTimeUTC o openTimeBRT
+                    if (!trade.openTimeUTC && !trade.openTimeBRT) {
+                        console.warn('⚠️ Trade sin openTimeUTC/openTimeBRT:', trade.tradeNumber);
+                        return;
+                    }
+
+                    const timeStr = trade.openTimeUTC || trade.openTimeBRT;
+                    const date = new Date(timeStr);
+                    const day = date.getDay();
+
+                    dailyData[day].trades.push(trade);
+                    dailyData[day].count++;
+                    if ((trade.rExecuted || 0) > 0) dailyData[day].wins++;
+                    dailyData[day].totalR += trade.rExecuted || 0;
+                });
+
+                // Calculate averages
+                Object.values(dailyData).forEach(data => {
+                    if (data.count > 0) {
+                        data.avgR = data.totalR / data.count;
+                        data.winRate = (data.wins / data.count) * 100;
+                    }
+                });
+
+                console.log('✅ Daily data processed:', Object.values(dailyData).filter(d => d.count > 0).length, 'days with trades');
+
+                return dailyData;
+            },
+
+            // ─────────────────────────────────────────────────────
+            // GENERATE TEMPORAL INSIGHTS
+            // ─────────────────────────────────────────────────────
+            generateTemporalInsights(byHour, byDay) {
+                // Filtrar solo horas con trades
+                const hoursWithTrades = Object.values(byHour).filter(d => d.count > 0);
+
+                let bestHour = { hour: '--', avgR: 0, winRate: 0, count: 0 };
+                let worstHour = { hour: '--', avgR: 0, winRate: 0, count: 0 };
+
+                if (hoursWithTrades.length > 0) {
+                    // Inicializar con el primer elemento
+                    bestHour = { ...hoursWithTrades[0], hour: hoursWithTrades[0].hour };
+                    worstHour = { ...hoursWithTrades[0], hour: hoursWithTrades[0].hour };
+
+                    hoursWithTrades.forEach(data => {
+                        if (data.avgR > bestHour.avgR) {
+                            bestHour = { hour: data.hour, avgR: data.avgR, winRate: data.winRate, count: data.count };
+                        }
+                        if (data.avgR < worstHour.avgR) {
+                            worstHour = { hour: data.hour, avgR: data.avgR, winRate: data.winRate, count: data.count };
+                        }
+                    });
+                }
+
+                // Filtrar solo días con trades
+                const daysWithTrades = Object.values(byDay).filter(d => d.count > 0);
+
+                let bestDay = { dayName: 'Sin datos', avgR: 0, winRate: 0, count: 0 };
+
+                if (daysWithTrades.length > 0) {
+                    // Inicializar con el primer elemento
+                    bestDay = { ...daysWithTrades[0] };
+
+                    daysWithTrades.forEach(data => {
+                        if (data.avgR > bestDay.avgR) {
+                            bestDay = { dayName: data.dayName, avgR: data.avgR, winRate: data.winRate, count: data.count };
+                        }
+                    });
+                }
+
+                return { bestHour, worstHour, bestDay };
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER INSIGHT CARD
+            // ─────────────────────────────────────────────────────
+            renderInsightCard(icon, title, data) {
+                let mainText = '';
+                let subText = '';
+                let detailText = '';
+                let colorClass = 'text-white';
+
+                // Verificar si hay datos válidos
+                const hasData = data.count > 0;
+
+                if (data.hour !== undefined) {
+                    // Para horas
+                    mainText = hasData ? `${data.hour}:00h` : 'Sin datos';
+                    subText = hasData ? `${data.avgR > 0 ? '+' : ''}${data.avgR.toFixed(2)}R` : '--';
+                    colorClass = hasData ? (data.avgR > 0 ? 'text-emerald-400' : 'text-red-400') : 'text-white/50';
+                } else {
+                    // Para días
+                    mainText = hasData ? data.dayName : 'Sin datos';
+                    subText = hasData ? `${data.avgR > 0 ? '+' : ''}${data.avgR.toFixed(2)}R` : '--';
+                    colorClass = hasData ? (data.avgR > 0 ? 'text-emerald-400' : 'text-red-400') : 'text-white/50';
+                }
+
+                detailText = hasData
+                    ? `${data.count} trade${data.count !== 1 ? 's' : ''} · ${data.winRate.toFixed(0)}% WR`
+                    : 'Agrega más trades';
+
+                return `
+                    <div class="rounded-xl p-6 border border-white/10"
+                         style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                        <div class="text-center">
+                            <div class="text-4xl mb-3">${icon}</div>
+                            <div class="text-xs text-white/60 uppercase tracking-wider mb-3">${title}</div>
+                            <div class="text-2xl font-bold mb-2">${mainText}</div>
+                            <div class="${colorClass} text-xl font-bold font-mono mb-2">${subText}</div>
+                            <div class="text-xs text-white/50">${detailText}</div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER HOURLY TABLE
+            // ─────────────────────────────────────────────────────
+            renderHourlyTable(byHour) {
+                const rows = Object.values(byHour)
+                    .filter(d => d.count > 0)
+                    .map(data => {
+                        const avgRColor = data.avgR > 0 ? 'text-emerald-400' : 'text-red-400';
+                        const totalRColor = data.totalR > 0 ? 'text-emerald-400' : 'text-red-400';
+
+                        return `
+                            <tr class="border-b border-white/5 hover:bg-white/[0.02] transition-all">
+                                <td class="py-3 px-6 text-sm font-mono">${data.hour.toString().padStart(2, '0')}:00 - ${data.hour.toString().padStart(2, '0')}:59</td>
+                                <td class="py-3 px-6 text-sm text-center font-bold">${data.count}</td>
+                                <td class="py-3 px-6 text-sm text-center font-bold">${data.winRate.toFixed(0)}%</td>
+                                <td class="py-3 px-6 text-sm text-center font-mono font-bold ${avgRColor}">
+                                    ${data.avgR > 0 ? '+' : ''}${data.avgR.toFixed(2)}R
+                                </td>
+                                <td class="py-3 px-6 text-sm text-center font-mono font-bold ${totalRColor}">
+                                    ${data.totalR > 0 ? '+' : ''}${data.totalR.toFixed(2)}R
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                if (rows === '') {
+                    return `
+                        <div class="py-8 text-center opacity-50">
+                            <p>No hay datos con timestamp disponibles</p>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Hora</th>
+                                <th class="text-center py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Trades</th>
+                                <th class="text-center py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Win Rate</th>
+                                <th class="text-center py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Avg R</th>
+                                <th class="text-center py-4 px-6 text-xs font-bold uppercase tracking-wider opacity-60">Total R</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                `;
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER TEMPORAL VIEW
+            // ─────────────────────────────────────────────────────
+            renderTemporalView() {
+                console.log('🕐 Rendering Vista Temporal');
+
+                const container = document.getElementById('view-temporal');
+
+                if (!container) {
+                    console.error('❌ Container #view-temporal not found');
+                    return;
+                }
+
+                // ─── EMPTY STATE ───
+                if (!this.trades || this.trades.length === 0) {
+                    container.innerHTML = `
+                        <div class="max-w-7xl mx-auto">
+                            <div class="mb-8">
+                                <h2 class="title-main mb-2" data-theme-text>Vista Temporal</h2>
+                                <p class="subtitle" data-theme-subtitle>Análisis de performance por hora y día</p>
+                            </div>
+                            <div class="flex flex-col items-center justify-center py-20">
+                                <i data-lucide="clock" class="w-24 h-24 mb-6 opacity-20"></i>
+                                <h3 class="text-3xl font-bold mb-3">No hay trades registrados</h3>
+                                <p class="text-lg opacity-50 mb-8 text-center max-w-md">
+                                    Agrega trades con timestamp para análisis temporal
+                                </p>
+                                <a href="parser.html"
+                                   class="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105">
+                                    <i data-lucide="plus" class="w-5 h-5"></i>
+                                    Ir al Parser
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                // Calculate temporal data
+                const byHour = this.calculatePerformanceByHour();
+                const byDay = this.calculatePerformanceByDay();
+                const insights = this.generateTemporalInsights(byHour, byDay);
+
+                // Build HTML
+                container.innerHTML = `
+                    <div class="max-w-7xl mx-auto">
+                        <div class="mb-8">
+                            <div class="flex items-center gap-4 mb-2">
+                                <h2 class="title-main" data-theme-text>Vista Temporal</h2>
+                            </div>
+                            <p class="subtitle" data-theme-subtitle>Análisis de performance por hora y día - Identifica tus mejores momentos</p>
+                        </div>
+
+                        <!-- Insight Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            ${this.renderInsightCard('🔥', 'Mejor Horario', insights.bestHour)}
+                            ${this.renderInsightCard('⚠️', 'Evitar', insights.worstHour)}
+                            ${this.renderInsightCard('📅', 'Mejor Día', insights.bestDay)}
+                        </div>
+
+                        <!-- Hourly Chart -->
+                        <div class="rounded-2xl p-6 mb-6 border border-white/10"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                                <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                                Performance por Hora del Día
+                            </h3>
+                            <div style="height: 300px; position: relative;">
+                                <canvas id="hourlyChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Daily Chart -->
+                        <div class="rounded-2xl p-6 mb-6 border border-white/10"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                                <i data-lucide="calendar" class="w-5 h-5"></i>
+                                Performance por Día de Semana
+                            </h3>
+                            <div style="height: 300px; position: relative;">
+                                <canvas id="dailyChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Hourly Table -->
+                        <div class="rounded-2xl border border-white/10 overflow-hidden"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <div class="px-6 py-5 border-b border-white/10">
+                                <h3 class="text-xl font-bold flex items-center gap-2">
+                                    <i data-lucide="table" class="w-5 h-5"></i>
+                                    Desglose Detallado por Hora
+                                </h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                ${this.renderHourlyTable(byHour)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Reinitialize Lucide icons
+                lucide.createIcons();
+
+                // Render charts
+                setTimeout(() => {
+                    this.renderTemporalCharts();
+                }, 100);
+
+                console.log('✅ Vista Temporal rendered');
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER TEMPORAL CHARTS
+            // ─────────────────────────────────────────────────────
+            renderTemporalCharts() {
+                console.log('📊 Rendering temporal charts');
+
+                const byHour = this.calculatePerformanceByHour();
+                const byDay = this.calculatePerformanceByDay();
+
+                // Hourly Chart
+                const hourCtx = document.getElementById('hourlyChart');
+                if (hourCtx) {
+                    new Chart(hourCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: Object.keys(byHour).map(h => `${h.padStart(2, '0')}:00`),
+                            datasets: [{
+                                label: 'Avg R',
+                                data: Object.values(byHour).map(d => d.count > 0 ? d.avgR : null),
+                                backgroundColor: Object.values(byHour).map(d =>
+                                    d.avgR > 0 ? 'rgba(16, 185, 129, 0.6)' : 'rgba(239, 68, 68, 0.6)'
+                                ),
+                                borderColor: Object.values(byHour).map(d =>
+                                    d.avgR > 0 ? 'rgba(16, 185, 129, 1)' : 'rgba(239, 68, 68, 1)'
+                                ),
+                                borderWidth: 2,
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                    padding: 12,
+                                    titleColor: 'rgba(255, 255, 255, 0.9)',
+                                    bodyColor: 'rgba(255, 255, 255, 0.9)',
+                                    callbacks: {
+                                        label: (context) => {
+                                            const data = Object.values(byHour)[context.dataIndex];
+                                            if (data.count === 0) return 'Sin trades';
+                                            return [
+                                                `Avg R: ${data.avgR >= 0 ? '+' : ''}${data.avgR.toFixed(2)}R`,
+                                                `Trades: ${data.count}`,
+                                                `Win Rate: ${data.winRate.toFixed(0)}%`,
+                                                `Total R: ${data.totalR >= 0 ? '+' : ''}${data.totalR.toFixed(2)}R`
+                                            ];
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: 'rgba(255,255,255,0.05)',
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        color: 'rgba(255,255,255,0.6)',
+                                        font: { size: 11 },
+                                        callback: function(value) {
+                                            return value >= 0 ? '+' + value + 'R' : value + 'R';
+                                        }
+                                    }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: {
+                                        color: 'rgba(255,255,255,0.6)',
+                                        font: { size: 10 },
+                                        maxRotation: 45,
+                                        minRotation: 45
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Daily Chart
+                const dayCtx = document.getElementById('dailyChart');
+                if (dayCtx) {
+                    new Chart(dayCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: Object.values(byDay).map(d => d.dayName),
+                            datasets: [{
+                                label: 'Avg R',
+                                data: Object.values(byDay).map(d => d.count > 0 ? d.avgR : null),
+                                backgroundColor: Object.values(byDay).map(d =>
+                                    d.avgR > 0 ? 'rgba(16, 185, 129, 0.6)' : 'rgba(239, 68, 68, 0.6)'
+                                ),
+                                borderColor: Object.values(byDay).map(d =>
+                                    d.avgR > 0 ? 'rgba(16, 185, 129, 1)' : 'rgba(239, 68, 68, 1)'
+                                ),
+                                borderWidth: 2,
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                    padding: 12,
+                                    titleColor: 'rgba(255, 255, 255, 0.9)',
+                                    bodyColor: 'rgba(255, 255, 255, 0.9)',
+                                    callbacks: {
+                                        label: (context) => {
+                                            const data = Object.values(byDay)[context.dataIndex];
+                                            if (data.count === 0) return 'Sin trades';
+                                            return [
+                                                `Avg R: ${data.avgR >= 0 ? '+' : ''}${data.avgR.toFixed(2)}R`,
+                                                `Trades: ${data.count}`,
+                                                `Win Rate: ${data.winRate.toFixed(0)}%`,
+                                                `Total R: ${data.totalR >= 0 ? '+' : ''}${data.totalR.toFixed(2)}R`
+                                            ];
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: 'rgba(255,255,255,0.05)',
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        color: 'rgba(255,255,255,0.6)',
+                                        font: { size: 11 },
+                                        callback: function(value) {
+                                            return value >= 0 ? '+' + value + 'R' : value + 'R';
+                                        }
+                                    }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: {
+                                        color: 'rgba(255,255,255,0.6)',
+                                        font: { size: 11 }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                console.log('✅ Temporal charts rendered');
             }
         };
 
