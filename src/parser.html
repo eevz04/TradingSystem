@@ -1883,10 +1883,10 @@
             }
             telegram += `\n\n`;
             telegram += `Volume: ${trade.volume || 0}\n`;
-            telegram += `Result: ${resultSign}$${Math.abs(result).toFixed(2)}\n`;
-            
+            telegram += `Result: ${result > 0 ? '+' : ''}${result < 0 ? '-' : ''}$${Math.abs(result).toFixed(2)}\n`;
+
             if (rExecuted !== 0) {
-                telegram += `R Real: ${rSign}${Math.abs(rExecuted).toFixed(2)}R\n`;
+                telegram += `R Real: ${rExecuted > 0 ? '+' : ''}${rExecuted < 0 ? '-' : ''}${Math.abs(rExecuted).toFixed(2)}R\n`;
             }
 
             // Risk planned and deviation
