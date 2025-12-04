@@ -1237,6 +1237,8 @@
                         this.renderTemporalView();
                         break;
                     case 'progress':
+                        this.renderProgresoView();
+                        break;
                     case 'ev':
                         // Keep existing placeholder (coming soon)
                         console.log(`View ${viewId} - Placeholder shown`);
@@ -2772,6 +2774,436 @@
                 }
 
                 console.log('✅ Temporal charts rendered');
+            },
+
+            // ═════════════════════════════════════════════════════════
+            // VISTA PROGRESO - ANÁLISIS HISTÓRICO Y EVOLUCIÓN MENSUAL
+            // ═════════════════════════════════════════════════════════
+
+            // ─────────────────────────────────────────────────────
+            // CALCULATE MONTHLY PROGRESS
+            // ─────────────────────────────────────────────────────
+            calculateMonthlyProgress() {
+                const monthlyData = {};
+
+                this.trades.forEach(trade => {
+                    if (!trade.openTimeUTC && !trade.openTimeBRT) return;
+
+                    const date = new Date(trade.openTimeUTC || trade.openTimeBRT);
+                    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+                    if (!monthlyData[monthKey]) {
+                        monthlyData[monthKey] = {
+                            monthKey,
+                            monthName: date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }),
+                            trades: [],
+                            count: 0,
+                            wins: 0,
+                            pnl: 0,
+                            rTotal: 0
+                        };
+                    }
+
+                    monthlyData[monthKey].trades.push(trade);
+                    monthlyData[monthKey].count++;
+                    if (trade.rExecuted > 0) monthlyData[monthKey].wins++;
+                    monthlyData[monthKey].pnl += trade.result || 0;
+                    monthlyData[monthKey].rTotal += trade.rExecuted || 0;
+                });
+
+                return Object.values(monthlyData).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+            },
+
+            // ─────────────────────────────────────────────────────
+            // FIND BEST & WORST TRADES
+            // ─────────────────────────────────────────────────────
+            findBestWorstTrades() {
+                let best = null;
+                let worst = null;
+
+                this.trades.forEach(trade => {
+                    if (!best || (trade.rExecuted || 0) > (best.rExecuted || 0)) {
+                        best = trade;
+                    }
+                    if (!worst || (trade.rExecuted || 0) < (worst.rExecuted || 0)) {
+                        worst = trade;
+                    }
+                });
+
+                return { best, worst };
+            },
+
+            // ─────────────────────────────────────────────────────
+            // CALCULATE GENERAL METRICS
+            // ─────────────────────────────────────────────────────
+            calculateGeneralMetrics() {
+                const totalTrades = this.trades.length;
+                const wins = this.trades.filter(t => t.rExecuted > 0).length;
+                const totalPnL = this.trades.reduce((sum, t) => sum + (t.result || 0), 0);
+                const totalR = this.trades.reduce((sum, t) => sum + (t.rExecuted || 0), 0);
+
+                return {
+                    totalTrades,
+                    wins,
+                    winRate: totalTrades > 0 ? (wins / totalTrades) * 100 : 0,
+                    totalPnL,
+                    avgR: totalTrades > 0 ? totalR / totalTrades : 0
+                };
+            },
+
+            // ─────────────────────────────────────────────────────
+            // CALCULATE DRAWDOWN
+            // ─────────────────────────────────────────────────────
+            calculateDrawdown() {
+                let peak = 0;
+                let maxDD = 0;
+                let currentDD = 0;
+                let runningPnL = 0;
+
+                // Ordenar trades por fecha
+                const sortedTrades = [...this.trades].sort((a, b) => {
+                    const dateA = new Date(a.openTimeUTC || a.openTimeBRT);
+                    const dateB = new Date(b.openTimeUTC || b.openTimeBRT);
+                    return dateA - dateB;
+                });
+
+                sortedTrades.forEach(trade => {
+                    runningPnL += trade.result || 0;
+
+                    if (runningPnL > peak) {
+                        peak = runningPnL;
+                    }
+
+                    currentDD = peak - runningPnL;
+                    if (currentDD > maxDD) {
+                        maxDD = currentDD;
+                    }
+                });
+
+                return {
+                    maxDD,
+                    currentDD,
+                    inRecovery: currentDD > 0
+                };
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER METRIC CARD
+            // ─────────────────────────────────────────────────────
+            renderMetricCard(icon, title, value, colorClass) {
+                return `
+                    <div class="rounded-xl p-6 border border-white/10"
+                         style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                        <div class="text-center">
+                            <div class="text-3xl mb-2">${icon}</div>
+                            <div class="text-sm text-white/60 mb-2">${title}</div>
+                            <div class="${colorClass} text-2xl font-bold">${value}</div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER MONTHLY CARDS
+            // ─────────────────────────────────────────────────────
+            renderMonthlyCards(monthlyData) {
+                if (monthlyData.length === 0) {
+                    return '<div class="col-span-full text-center text-white/60 py-8">No hay datos mensuales</div>';
+                }
+
+                return monthlyData.map(month => {
+                    const winRate = month.count > 0 ? (month.wins / month.count) * 100 : 0;
+                    const pnlClass = month.pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+
+                    return `
+                        <div class="rounded-xl p-6 border border-white/10"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <div class="text-lg font-bold mb-2 capitalize">${month.monthName}</div>
+                            <div class="${pnlClass} text-xl font-bold mb-2">
+                                ${month.pnl >= 0 ? '+' : ''}$${month.pnl.toFixed(2)}
+                            </div>
+                            <div class="text-sm text-white/70 mb-1">
+                                ${month.count} trade${month.count !== 1 ? 's' : ''}
+                            </div>
+                            <div class="text-sm text-white/70">
+                                ${winRate.toFixed(0)}% WR
+                            </div>
+                            <div class="${pnlClass} text-sm font-mono mt-2">
+                                ${month.rTotal >= 0 ? '+' : ''}${month.rTotal.toFixed(2)}R
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER BEST/WORST CARD
+            // ─────────────────────────────────────────────────────
+            renderBestWorstCard(trade, isBest) {
+                if (!trade) {
+                    return '<div class="text-center text-white/60 py-8">No hay datos</div>';
+                }
+
+                const colorClass = isBest ? 'text-emerald-400' : 'text-red-400';
+                const date = new Date(trade.openTimeUTC || trade.openTimeBRT);
+
+                return `
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-white/70">Trade #${trade.tradeNumber}</span>
+                            <span class="text-white/70">${date.toLocaleDateString()}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-lg">${trade.symbol}</span>
+                            <span class="text-sm px-2 py-1 rounded ${trade.type === 'LONG' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">
+                                ${trade.type}
+                            </span>
+                        </div>
+                        <div class="${colorClass} text-3xl font-bold">
+                            ${trade.result >= 0 ? '+' : ''}$${trade.result.toFixed(2)}
+                        </div>
+                        <div class="${colorClass} text-xl font-mono">
+                            ${trade.rExecuted >= 0 ? '+' : ''}${trade.rExecuted.toFixed(2)}R
+                        </div>
+                        ${trade.observation ? `
+                            <div class="text-sm text-white/60 italic border-l-2 border-white/20 pl-3 mt-3">
+                                "${trade.observation.substring(0, 100)}${trade.observation.length > 100 ? '...' : ''}"
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER DRAWDOWN CARD
+            // ─────────────────────────────────────────────────────
+            renderDrawdownCard(title, value, description) {
+                const displayValue = typeof value === 'number' ? `$${value.toFixed(2)}` : value;
+                const colorClass = typeof value === 'number' ? (value > 0 ? 'text-red-400' : 'text-emerald-400') : 'text-white';
+
+                return `
+                    <div class="text-center">
+                        <div class="text-sm text-white/60 mb-2">${title}</div>
+                        <div class="${colorClass} text-2xl font-bold mb-2">${displayValue}</div>
+                        <div class="text-xs text-white/50">${description}</div>
+                    </div>
+                `;
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER PROGRESO VIEW
+            // ─────────────────────────────────────────────────────
+            renderProgresoView() {
+                console.log('📈 Rendering Vista Progreso');
+
+                const container = document.getElementById('view-progress');
+
+                if (!container) {
+                    console.error('❌ Container #view-progress not found');
+                    return;
+                }
+
+                // ─── EMPTY STATE ───
+                if (!this.trades || this.trades.length === 0) {
+                    container.innerHTML = `
+                        <div class="max-w-7xl mx-auto">
+                            <div class="mb-8">
+                                <h2 class="title-main mb-2" data-theme-text>Vista Progreso</h2>
+                                <p class="subtitle" data-theme-subtitle>Evolución histórica y análisis de performance general</p>
+                            </div>
+                            <div class="flex flex-col items-center justify-center py-20">
+                                <i data-lucide="trending-up" class="w-24 h-24 mb-6 opacity-20"></i>
+                                <h3 class="text-3xl font-bold mb-3">No hay trades registrados</h3>
+                                <p class="text-lg opacity-50 mb-8 text-center max-w-md">
+                                    Agrega trades para ver tu progreso histórico
+                                </p>
+                                <a href="parser.html"
+                                   class="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105">
+                                    <i data-lucide="plus" class="w-5 h-5"></i>
+                                    Ir al Parser
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                const monthlyData = this.calculateMonthlyProgress();
+                const bestWorst = this.findBestWorstTrades();
+                const generalMetrics = this.calculateGeneralMetrics();
+                const drawdown = this.calculateDrawdown();
+
+                container.innerHTML = `
+                    <div class="max-w-7xl mx-auto">
+                        <div class="mb-8">
+                            <div class="flex items-center gap-4 mb-2">
+                                <h2 class="title-main" data-theme-text>Vista Progreso</h2>
+                            </div>
+                            <p class="subtitle" data-theme-subtitle>Evolución histórica y análisis de performance general</p>
+                        </div>
+
+                        <!-- Métricas Generales -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            ${this.renderMetricCard('💰', 'P&L Total', `$${generalMetrics.totalPnL.toFixed(2)}`, generalMetrics.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400')}
+                            ${this.renderMetricCard('📊', 'Total Trades', generalMetrics.totalTrades, 'text-white')}
+                            ${this.renderMetricCard('🎯', 'Win Rate', `${generalMetrics.winRate.toFixed(1)}%`, generalMetrics.winRate >= 50 ? 'text-emerald-400' : 'text-red-400')}
+                            ${this.renderMetricCard('📈', 'Avg R', `${generalMetrics.avgR >= 0 ? '+' : ''}${generalMetrics.avgR.toFixed(2)}R`, generalMetrics.avgR >= 0 ? 'text-emerald-400' : 'text-red-400')}
+                        </div>
+
+                        <!-- Equity Curve Mensual -->
+                        <div class="rounded-2xl p-6 mb-6 border border-white/10"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <h3 class="text-xl font-bold mb-4">Equity Curve Mensual</h3>
+                            <div style="height: 300px; position: relative;">
+                                <canvas id="equityMonthlyChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Cards Mensuales -->
+                        <div class="rounded-2xl border border-white/10 mb-6 overflow-hidden"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <div class="px-6 py-5 border-b border-white/10">
+                                <h3 class="text-xl font-bold">Comparación Mensual</h3>
+                            </div>
+                            <div class="p-6">
+                                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    ${this.renderMonthlyCards(monthlyData)}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Best & Worst Trades -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div class="rounded-2xl border border-white/10 overflow-hidden"
+                                 style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                                <div class="px-6 py-5 border-b border-white/10">
+                                    <h3 class="text-xl font-bold">🏆 Mejor Trade</h3>
+                                </div>
+                                <div class="p-6">
+                                    ${this.renderBestWorstCard(bestWorst.best, true)}
+                                </div>
+                            </div>
+                            <div class="rounded-2xl border border-white/10 overflow-hidden"
+                                 style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                                <div class="px-6 py-5 border-b border-white/10">
+                                    <h3 class="text-xl font-bold">💀 Peor Trade</h3>
+                                </div>
+                                <div class="p-6">
+                                    ${this.renderBestWorstCard(bestWorst.worst, false)}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Drawdown Info -->
+                        <div class="rounded-2xl border border-white/10 overflow-hidden"
+                             style="background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);">
+                            <div class="px-6 py-5 border-b border-white/10">
+                                <h3 class="text-xl font-bold">📉 Drawdown Analysis</h3>
+                            </div>
+                            <div class="p-6">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    ${this.renderDrawdownCard('Max Drawdown', drawdown.maxDD, 'El mayor drawdown histórico')}
+                                    ${this.renderDrawdownCard('Drawdown Actual', drawdown.currentDD, 'Distancia del peak actual')}
+                                    ${this.renderDrawdownCard('En Recuperación', drawdown.inRecovery ? 'Sí' : 'No', drawdown.inRecovery ? 'Debajo del peak anterior' : 'En nuevo peak')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Reinitialize Lucide icons
+                lucide.createIcons();
+
+                // Render charts
+                setTimeout(() => {
+                    this.renderEquityMonthlyChart();
+                }, 100);
+
+                console.log('✅ Vista Progreso rendered');
+            },
+
+            // ─────────────────────────────────────────────────────
+            // RENDER EQUITY MONTHLY CHART
+            // ─────────────────────────────────────────────────────
+            renderEquityMonthlyChart() {
+                console.log('📊 Rendering equity monthly chart');
+
+                const monthlyData = this.calculateMonthlyProgress();
+
+                if (monthlyData.length === 0) return;
+
+                // Calcular equity acumulada por mes
+                let cumulativePnL = 0;
+                const equityData = monthlyData.map(month => {
+                    cumulativePnL += month.pnl;
+                    return {
+                        month: month.monthName,
+                        equity: cumulativePnL
+                    };
+                });
+
+                const ctx = document.getElementById('equityMonthlyChart');
+                if (!ctx) return;
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: equityData.map(d => d.month),
+                        datasets: [{
+                            label: 'Equity',
+                            data: equityData.map(d => d.equity),
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleColor: 'rgba(255, 255, 255, 0.9)',
+                                bodyColor: 'rgba(255, 255, 255, 0.9)',
+                                callbacks: {
+                                    label: (context) => {
+                                        return `Equity: $${context.parsed.y.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(255,255,255,0.05)',
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: 'rgba(255,255,255,0.6)',
+                                    font: { size: 11 },
+                                    callback: (value) => `$${value}`
+                                }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    color: 'rgba(255,255,255,0.6)',
+                                    font: { size: 10 },
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        }
+                    }
+                });
+
+                console.log('✅ Equity monthly chart rendered');
             }
         };
 
